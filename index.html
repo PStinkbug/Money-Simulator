@@ -3,44 +3,79 @@
 <head>
     <meta charset="UTF-8">
     <title>Money Simulator</title>
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
     <style>
         body {
-            font-family: Arial;
-            background: #111;
+            background: #0f172a;
             color: white;
+            font-family: Arial, sans-serif;
             text-align: center;
+            margin: 0;
+            padding: 20px;
         }
-        button {
-            padding: 10px;
-            margin: 5px;
-            font-size: 16px;
+
+        h1 {
+            margin-bottom: 10px;
         }
-        input {
-            padding: 5px;
-        }
+
         .box {
-            background: #222;
+            background: #1e293b;
             padding: 15px;
             margin: 10px auto;
-            width: 300px;
-            border-radius: 8px;
+            border-radius: 10px;
+            max-width: 420px;
+        }
+
+        input, button {
+            padding: 8px;
+            margin: 5px;
+            border-radius: 6px;
+            border: none;
+        }
+
+        button {
+            background: #22c55e;
+            color: black;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        button:hover {
+            background: #16a34a;
+        }
+
+        canvas {
+            background: white;
+            border-radius: 10px;
+            margin-top: 15px;
+            max-width: 600px;
         }
     </style>
 </head>
 <body>
 
 <h1>💰 Money Simulator</h1>
+<p id="day">Day 1</p>
 
 <div class="box" id="market"></div>
 <div class="box" id="portfolio"></div>
 
-<input id="asset" placeholder="Asset (BTC)">
-<input id="amount" type="number" placeholder="Amount">
+<div class="box">
+    <input id="asset" placeholder="Asset (BTC)">
+    <input id="amount" type="number" placeholder="Amount">
+    <br>
+    <button onclick="buy()">Buy</button>
+    <button onclick="sell()">Sell</button>
+    <button onclick="nextDay()">Next Day</button>
+    <br><br>
+    <button onclick="saveGame()">Save</button>
+    <button onclick="loadGame()">Load</button>
+</div>
 
-<br><br>
-<button onclick="buy()">Buy</button>
-<button onclick="sell()">Sell</button>
-<button onclick="nextDay()">Next Day</button>
+<canvas id="priceChart"></canvas>
 
 <script src="script.js"></script>
 </body>
