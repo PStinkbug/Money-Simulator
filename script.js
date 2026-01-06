@@ -1,7 +1,7 @@
 let cash = 10000;
 let day = 1;
 
-// Add more cryptos/stocks
+// Assets
 let assets = {
     BTC: 30000,
     ETH: 2000,
@@ -11,9 +11,20 @@ let assets = {
     MSFT: 300
 };
 
+// Portfolio
 let portfolio = { BTC:0, ETH:0, LTC:0, AAPL:0, TSLA:0, MSFT:0 };
-let history = { BTC: [] };
 
+// Price history for chart (all assets)
+let history = {
+    BTC: [],
+    ETH: [],
+    LTC: [],
+    AAPL: [],
+    TSLA: [],
+    MSFT: []
+};
+
+// News events
 const newsEvents = [
     { text:"Crypto surges!", effect:0.15 },
     { text:"Crypto crash!", effect:-0.2 },
@@ -21,10 +32,21 @@ const newsEvents = [
     { text:"Market uncertainty!", effect:-0.1 }
 ];
 
+// Chart.js setup
 const ctx = document.getElementById("priceChart").getContext("2d");
 const chart = new Chart(ctx, {
     type:"line",
-    data:{ labels:[], datasets:[ { label:"BTC Price", data:[], borderColor:"green", tension:0.3 } ] }
+    data:{
+        labels:[],
+        datasets:[
+            { label:"BTC", data:[], borderColor:"green", tension:0.3 },
+            { label:"ETH", data:[], borderColor:"orange", tension:0.3 },
+            { label:"LTC", data:[], borderColor:"purple", tension:0.3 },
+            { label:"AAPL", data:[], borderColor:"blue", tension:0.3 },
+            { label:"TSLA", data:[], borderColor:"red", tension:0.3 },
+            { label:"MSFT", data:[], borderColor:"yellow", tension:0.3 }
+        ]
+    }
 });
 
 // ------------------- FETCH REAL PRICES -------------------
@@ -44,29 +66,35 @@ async function fetchStockPrice(symbol) {
     } catch { return assets[symbol]; }
 }
 
+// ------------------- RANDOM FLUCTUATION -------------------
+function randomFluctuation(price) {
+    const change = (Math.random()*0.06)-0.03; // -3% to +3%
+    return price*(1+change);
+}
+
 async function updateMarketReal() {
     // Crypto
-    assets.BTC = await fetchCryptoPrice("bitcoin");
-    assets.ETH = await fetchCryptoPrice("ethereum");
-    assets.LTC = await fetchCryptoPrice("litecoin");
+    assets.BTC = randomFluctuation(await fetchCryptoPrice("bitcoin"));
+    assets.ETH = randomFluctuation(await fetchCryptoPrice("ethereum"));
+    assets.LTC = randomFluctuation(await fetchCryptoPrice("litecoin"));
 
     // Stocks
-    assets.AAPL = await fetchStockPrice("AAPL");
-    assets.TSLA = await fetchStockPrice("TSLA");
-    assets.MSFT = await fetchStockPrice("MSFT");
+    assets.AAPL = randomFluctuation(await fetchStockPrice("AAPL"));
+    assets.TSLA = randomFluctuation(await fetchStockPrice("TSLA"));
+    assets.MSFT = randomFluctuation(await fetchStockPrice("MSFT"));
 }
 
 // ------------------- GAME LOGIC -------------------
 function newsEvent() {
-    if (Math.random()<0.3){
-        const event=newsEvents[Math.floor(Math.random()*newsEvents.length)];
+    if(Math.random()<0.3){
+        const event = newsEvents[Math.floor(Math.random()*newsEvents.length)];
         alert(event.text);
         for(let a in assets) assets[a]*=(1+event.effect);
     }
 }
 
 function render() {
-    document.getElementById("day").innerText=`Day ${day}`;
+    document.getElementById("day").innerText = `Day ${day}`;
 
     let marketHTML="<h3>Market</h3>";
     for(let a in assets) marketHTML+=`${a}: $${Math.round(assets[a])}<br>`;
@@ -82,10 +110,22 @@ function render() {
     document.getElementById("portfolio").innerHTML=portfolioHTML;
 }
 
-function updateChart(){
+// ------------------- UPDATE CHART -------------------
+function updateChart() {
     history.BTC.push(Math.round(assets.BTC));
+    history.ETH.push(Math.round(assets.ETH));
+    history.LTC.push(Math.round(assets.LTC));
+    history.AAPL.push(Math.round(assets.AAPL));
+    history.TSLA.push(Math.round(assets.TSLA));
+    history.MSFT.push(Math.round(assets.MSFT));
+
     chart.data.labels.push(day);
-    chart.data.datasets[0].data=history.BTC;
+    chart.data.datasets[0].data = history.BTC;
+    chart.data.datasets[1].data = history.ETH;
+    chart.data.datasets[2].data = history.LTC;
+    chart.data.datasets[3].data = history.AAPL;
+    chart.data.datasets[4].data = history.TSLA;
+    chart.data.datasets[5].data = history.MSFT;
     chart.update();
 }
 
@@ -111,9 +151,9 @@ function sell() {
 }
 
 // ------------------- NEXT DAY -------------------
-let lastFetch=0;
+let lastFetch = 0;
 async function nextDay() {
-    const now=Date.now();
+    const now = Date.now();
     if(now-lastFetch<10000) return alert("Wait 10 seconds before next day.");
     lastFetch=now;
 
@@ -125,12 +165,12 @@ async function nextDay() {
 }
 
 // ------------------- SAVE / LOAD -------------------
-function saveGame(){
-    localStorage.setItem("moneySim",JSON.stringify({cash,day,assets,portfolio,history}));
+function saveGame() {
+    localStorage.setItem("moneySim", JSON.stringify({cash, day, assets, portfolio, history}));
     alert("Game saved!");
 }
 
-function loadGame(){
+function loadGame() {
     const data=JSON.parse(localStorage.getItem("moneySim"));
     if(!data) return alert("No save found");
     cash=data.cash;
@@ -140,6 +180,11 @@ function loadGame(){
     history=data.history;
     chart.data.labels=history.BTC.map((_,i)=>i+1);
     chart.data.datasets[0].data=history.BTC;
+    chart.data.datasets[1].data=history.ETH;
+    chart.data.datasets[2].data=history.LTC;
+    chart.data.datasets[3].data=history.AAPL;
+    chart.data.datasets[4].data=history.TSLA;
+    chart.data.datasets[5].data=history.MSFT;
     chart.update();
     render();
 }
