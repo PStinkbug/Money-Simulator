@@ -28,7 +28,7 @@ const newsEvents = [
 ];
 
 // ⚠️ Replace with your own Alpha Vantage API key
-const ALPHA_KEY = TDTMF4AV21JMAHWU;
+const ALPHA_KEY = "TDTMF4AV21JMAHWU";
 
 // Chart.js setup
 const ctx = document.getElementById("priceChart").getContext("2d");
@@ -176,3 +176,4 @@ function loadGame() {
 }
 
 render();
+
