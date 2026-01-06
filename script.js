@@ -27,9 +27,6 @@ const newsEvents = [
     { text: "Market uncertainty causes selloff", effect: -0.1 }
 ];
 
-// ⚠️ Replace with your own Alpha Vantage API key
-const ALPHA_KEY = "TDTMF4AV21JMAHWU";
-
 // Chart.js setup
 const ctx = document.getElementById("priceChart").getContext("2d");
 const chart = new Chart(ctx, {
@@ -45,67 +42,33 @@ const chart = new Chart(ctx, {
     }
 });
 
-// ------------------- API CACHING -------------------
-let cachedPrices = {};
-let isFetching = false;
-let lastFetch = 0;
-
-// Fetch stock price safely
-async function fetchStockPrice(symbol) {
-    const now = Date.now();
-    if (cachedPrices[symbol] && now - cachedPrices[symbol].time < 60000) {
-        return cachedPrices[symbol].price;
-    }
-    try {
-        const url = `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${symbol}&apikey=${ALPHA_KEY}`;
-        const resp = await fetch(url);
-        const data = await resp.json();
-        const price = data["Global Quote"]?.["05. price"];
-        if (price) {
-            cachedPrices[symbol] = { price: parseFloat(price), time: now };
-            return parseFloat(price);
-        }
-        console.warn(`No stock price for ${symbol}, using previous value`);
-        return assets[symbol]; // fallback
-    } catch (e) {
-        console.error("Error fetching stock price:", e);
-        return assets[symbol]; // fallback
-    }
-}
-
-// Fetch crypto price safely
-async function fetchCryptoPrice(symbol) {
-    const now = Date.now();
-    if (cachedPrices[symbol] && now - cachedPrices[symbol].time < 60000) {
-        return cachedPrices[symbol].price;
-    }
-    try {
-        const url = `https://www.alphavantage.co/query?function=CURRENCY_EXCHANGE_RATE&from_currency=${symbol}&to_currency=USD&apikey=${ALPHA_KEY}`;
-        const resp = await fetch(url);
-        const data = await resp.json();
-        const price = data["Realtime Currency Exchange Rate"]?.["5. Exchange Rate"];
-        if (price) {
-            cachedPrices[symbol] = { price: parseFloat(price), time: now };
-            return parseFloat(price);
-        }
-        console.warn(`No crypto price for ${symbol}, using previous value`);
-        return assets[symbol]; // fallback
-    } catch (e) {
-        console.error("Error fetching crypto price:", e);
-        return assets[symbol]; // fallback
-    }
-}
-
 // ------------------- MARKET UPDATE -------------------
-async function updateMarketReal() {
-    // Stocks
-    for (let symbol of ["AAPL", "TSLA"]) {
-        assets[symbol] = await fetchStockPrice(symbol);
-    }
+let lastFetch = 0; // cooldown 15s
+let isFetching = false;
 
-    // Crypto
-    for (let symbol of ["BTC", "ETH"]) {
-        assets[symbol] = await fetchCryptoPrice(symbol);
+async function updateMarketReal() {
+    if (isFetching) return;
+    isFetching = true;
+
+    try {
+        const now = Date.now();
+        if (now - lastFetch < 15000) {
+            alert("Please wait 15 seconds before fetching new prices.");
+            isFetching = false;
+            return;
+        }
+        lastFetch = now;
+
+        // Replace localhost with your deployed backend URL if hosted
+        const resp = await fetch("http://localhost:3000/prices");
+        const data = await resp.json();
+        for (let asset in data) {
+            assets[asset] = data[asset];
+        }
+    } catch (e) {
+        console.error("Failed to fetch prices, using previous values", e);
+    } finally {
+        isFetching = false;
     }
 }
 
@@ -167,12 +130,8 @@ function sell() {
     render();
 }
 
-// ------------------- NEXT DAY WITH COOLDOWN -------------------
+// ------------------- NEXT DAY -------------------
 async function nextDay() {
-    const now = Date.now();
-    if (now - lastFetch < 15000) return alert("Please wait 15 seconds before next day.");
-    lastFetch = now;
-
     day++;
     await updateMarketReal();
     newsEvent();
@@ -202,5 +161,4 @@ function loadGame() {
     render();
 }
 
-// ------------------- INITIAL RENDER -------------------
 render();
