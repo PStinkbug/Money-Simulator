@@ -1,24 +1,9 @@
 let cash = 10000;
 let day = 1;
 
-// Initial assets
-let assets = {
-    BTC: 30000,
-    ETH: 2000,
-    AAPL: 150,
-    TSLA: 250
-};
-
-let portfolio = {
-    BTC: 0,
-    ETH: 0,
-    AAPL: 0,
-    TSLA: 0
-};
-
-let history = {
-    BTC: []
-};
+let assets = { BTC: 30000, ETH: 2000, AAPL: 150, TSLA: 250 };
+let portfolio = { BTC: 0, ETH: 0, AAPL: 0, TSLA: 0 };
+let history = { BTC: [] };
 
 const newsEvents = [
     { text: "Crypto market surges!", effect: 0.15 },
@@ -27,49 +12,38 @@ const newsEvents = [
     { text: "Market uncertainty causes selloff", effect: -0.1 }
 ];
 
-// Chart.js setup
 const ctx = document.getElementById("priceChart").getContext("2d");
 const chart = new Chart(ctx, {
     type: "line",
-    data: {
-        labels: [],
-        datasets: [{
-            label: "BTC Price",
-            data: [],
-            borderColor: "green",
-            tension: 0.2
-        }]
-    }
+    data: { labels: [], datasets: [{ label: "BTC Price", data: [], borderColor: "green", tension: 0.2 }] }
 });
 
-// ------------------- MARKET UPDATE -------------------
-let lastFetch = 0; // cooldown 15s
-let isFetching = false;
+// ------------------- FETCH REAL PRICES -------------------
+async function fetchCryptoPrice(symbol) {
+    try {
+        const resp = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${symbol}&vs_currencies=usd`);
+        const data = await resp.json();
+        return data[symbol]?.usd || assets[symbol];
+    } catch {
+        return assets[symbol]; // fallback
+    }
+}
+
+async function fetchStockPrice(symbol) {
+    try {
+        const resp = await fetch(`https://financialmodelingprep.com/api/v3/quote/${symbol}?apikey=demo`);
+        const data = await resp.json();
+        return data[0]?.price || assets[symbol];
+    } catch {
+        return assets[symbol]; // fallback
+    }
+}
 
 async function updateMarketReal() {
-    if (isFetching) return;
-    isFetching = true;
-
-    try {
-        const now = Date.now();
-        if (now - lastFetch < 15000) {
-            alert("Please wait 15 seconds before fetching new prices.");
-            isFetching = false;
-            return;
-        }
-        lastFetch = now;
-
-        // Replace localhost with your deployed backend URL if hosted
-        const resp = await fetch("http://localhost:3000/prices");
-        const data = await resp.json();
-        for (let asset in data) {
-            assets[asset] = data[asset];
-        }
-    } catch (e) {
-        console.error("Failed to fetch prices, using previous values", e);
-    } finally {
-        isFetching = false;
-    }
+    assets.BTC = await fetchCryptoPrice("bitcoin");
+    assets.ETH = await fetchCryptoPrice("ethereum");
+    assets.AAPL = await fetchStockPrice("AAPL");
+    assets.TSLA = await fetchStockPrice("TSLA");
 }
 
 // ------------------- GAME LOGIC -------------------
@@ -77,9 +51,7 @@ function newsEvent() {
     if (Math.random() < 0.3) {
         const event = newsEvents[Math.floor(Math.random() * newsEvents.length)];
         alert(event.text);
-        for (let asset in assets) {
-            assets[asset] *= (1 + event.effect);
-        }
+        for (let asset in assets) assets[asset] *= (1 + event.effect);
     }
 }
 
@@ -87,9 +59,7 @@ function render() {
     document.getElementById("day").innerText = `Day ${day}`;
 
     let marketHTML = "<h3>Market</h3>";
-    for (let a in assets) {
-        marketHTML += `${a}: $${Math.round(assets[a])}<br>`;
-    }
+    for (let a in assets) marketHTML += `${a}: $${Math.round(assets[a])}<br>`;
     document.getElementById("market").innerHTML = marketHTML;
 
     let total = cash;
@@ -131,7 +101,12 @@ function sell() {
 }
 
 // ------------------- NEXT DAY -------------------
+let lastFetch = 0;
 async function nextDay() {
+    const now = Date.now();
+    if (now - lastFetch < 10000) return alert("Wait 10 seconds before next day.");
+    lastFetch = now;
+
     day++;
     await updateMarketReal();
     newsEvent();
@@ -141,9 +116,7 @@ async function nextDay() {
 
 // ------------------- SAVE / LOAD -------------------
 function saveGame() {
-    localStorage.setItem("moneySim", JSON.stringify({
-        cash, day, assets, portfolio, history
-    }));
+    localStorage.setItem("moneySim", JSON.stringify({ cash, day, assets, portfolio, history }));
     alert("Game saved!");
 }
 
