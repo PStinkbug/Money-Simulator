@@ -1,6 +1,7 @@
 let cash = 10000;
 let day = 1;
 
+// Initial assets
 let assets = {
     BTC: 30000,
     ETH: 2000,
@@ -26,6 +27,10 @@ const newsEvents = [
     { text: "Market uncertainty causes selloff", effect: -0.1 }
 ];
 
+// ⚠️ Replace with your own Alpha Vantage API key
+const ALPHA_KEY = TDTMF4AV21JMAHWU;
+
+// Chart.js setup
 const ctx = document.getElementById("priceChart").getContext("2d");
 const chart = new Chart(ctx, {
     type: "line",
@@ -40,16 +45,54 @@ const chart = new Chart(ctx, {
     }
 });
 
-function updateMarket() {
-    for (let asset in assets) {
-        let change = (Math.random() * 0.1) - 0.05;
-        assets[asset] = Math.max(1, Math.round(assets[asset] * (1 + change)));
+// ------------------- REAL MARKET DATA -------------------
+async function fetchStockPrice(symbol) {
+    const url = `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${symbol}&apikey=${ALPHA_KEY}`;
+    try {
+        const resp = await fetch(url);
+        const data = await resp.json();
+        if (data["Global Quote"] && data["Global Quote"]["05. price"]) {
+            return parseFloat(data["Global Quote"]["05. price"]);
+        }
+    } catch (e) {
+        console.error("Error fetching stock price:", e);
+    }
+    return null;
+}
+
+async function fetchCryptoPrice(symbol) {
+    const url = `https://www.alphavantage.co/query?function=CURRENCY_EXCHANGE_RATE&from_currency=${symbol}&to_currency=USD&apikey=${ALPHA_KEY}`;
+    try {
+        const resp = await fetch(url);
+        const data = await resp.json();
+        if (data["Realtime Currency Exchange Rate"] && data["Realtime Currency Exchange Rate"]["5. Exchange Rate"]) {
+            return parseFloat(data["Realtime Currency Exchange Rate"]["5. Exchange Rate"]);
+        }
+    } catch (e) {
+        console.error("Error fetching crypto price:", e);
+    }
+    return null;
+}
+
+// Update all assets from real market
+async function updateMarketReal() {
+    // Stocks
+    for (let symbol of ["AAPL", "TSLA"]) {
+        const price = await fetchStockPrice(symbol);
+        if (price) assets[symbol] = price;
+    }
+
+    // Crypto
+    for (let symbol of ["BTC", "ETH"]) {
+        const price = await fetchCryptoPrice(symbol);
+        if (price) assets[symbol] = price;
     }
 }
 
+// ------------------- GAME LOGIC -------------------
 function newsEvent() {
     if (Math.random() < 0.3) {
-        let event = newsEvents[Math.floor(Math.random() * newsEvents.length)];
+        const event = newsEvents[Math.floor(Math.random() * newsEvents.length)];
         alert(event.text);
         for (let asset in assets) {
             assets[asset] *= (1 + event.effect);
@@ -103,9 +146,9 @@ function sell() {
     render();
 }
 
-function nextDay() {
+async function nextDay() {
     day++;
-    updateMarket();
+    await updateMarketReal(); // Get real prices
     newsEvent();
     updateChart();
     render();
@@ -119,7 +162,7 @@ function saveGame() {
 }
 
 function loadGame() {
-    let data = JSON.parse(localStorage.getItem("moneySim"));
+    const data = JSON.parse(localStorage.getItem("moneySim"));
     if (!data) return alert("No save found");
     cash = data.cash;
     day = data.day;
