@@ -45,47 +45,67 @@ const chart = new Chart(ctx, {
     }
 });
 
-// ------------------- REAL MARKET DATA -------------------
+// ------------------- API CACHING -------------------
+let cachedPrices = {};
+let isFetching = false;
+let lastFetch = 0;
+
+// Fetch stock price safely
 async function fetchStockPrice(symbol) {
-    const url = `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${symbol}&apikey=${ALPHA_KEY}`;
+    const now = Date.now();
+    if (cachedPrices[symbol] && now - cachedPrices[symbol].time < 60000) {
+        return cachedPrices[symbol].price;
+    }
     try {
+        const url = `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${symbol}&apikey=${ALPHA_KEY}`;
         const resp = await fetch(url);
         const data = await resp.json();
-        if (data["Global Quote"] && data["Global Quote"]["05. price"]) {
-            return parseFloat(data["Global Quote"]["05. price"]);
+        const price = data["Global Quote"]?.["05. price"];
+        if (price) {
+            cachedPrices[symbol] = { price: parseFloat(price), time: now };
+            return parseFloat(price);
         }
+        console.warn(`No stock price for ${symbol}, using previous value`);
+        return assets[symbol]; // fallback
     } catch (e) {
         console.error("Error fetching stock price:", e);
+        return assets[symbol]; // fallback
     }
-    return null;
 }
 
+// Fetch crypto price safely
 async function fetchCryptoPrice(symbol) {
-    const url = `https://www.alphavantage.co/query?function=CURRENCY_EXCHANGE_RATE&from_currency=${symbol}&to_currency=USD&apikey=${ALPHA_KEY}`;
+    const now = Date.now();
+    if (cachedPrices[symbol] && now - cachedPrices[symbol].time < 60000) {
+        return cachedPrices[symbol].price;
+    }
     try {
+        const url = `https://www.alphavantage.co/query?function=CURRENCY_EXCHANGE_RATE&from_currency=${symbol}&to_currency=USD&apikey=${ALPHA_KEY}`;
         const resp = await fetch(url);
         const data = await resp.json();
-        if (data["Realtime Currency Exchange Rate"] && data["Realtime Currency Exchange Rate"]["5. Exchange Rate"]) {
-            return parseFloat(data["Realtime Currency Exchange Rate"]["5. Exchange Rate"]);
+        const price = data["Realtime Currency Exchange Rate"]?.["5. Exchange Rate"];
+        if (price) {
+            cachedPrices[symbol] = { price: parseFloat(price), time: now };
+            return parseFloat(price);
         }
+        console.warn(`No crypto price for ${symbol}, using previous value`);
+        return assets[symbol]; // fallback
     } catch (e) {
         console.error("Error fetching crypto price:", e);
+        return assets[symbol]; // fallback
     }
-    return null;
 }
 
-// Update all assets from real market
+// ------------------- MARKET UPDATE -------------------
 async function updateMarketReal() {
     // Stocks
     for (let symbol of ["AAPL", "TSLA"]) {
-        const price = await fetchStockPrice(symbol);
-        if (price) assets[symbol] = price;
+        assets[symbol] = await fetchStockPrice(symbol);
     }
 
     // Crypto
     for (let symbol of ["BTC", "ETH"]) {
-        const price = await fetchCryptoPrice(symbol);
-        if (price) assets[symbol] = price;
+        assets[symbol] = await fetchCryptoPrice(symbol);
     }
 }
 
@@ -126,6 +146,7 @@ function updateChart() {
     chart.update();
 }
 
+// ------------------- PLAYER ACTIONS -------------------
 function buy() {
     let asset = document.getElementById("asset").value.toUpperCase();
     let amount = Number(document.getElementById("amount").value);
@@ -146,14 +167,20 @@ function sell() {
     render();
 }
 
+// ------------------- NEXT DAY WITH COOLDOWN -------------------
 async function nextDay() {
+    const now = Date.now();
+    if (now - lastFetch < 15000) return alert("Please wait 15 seconds before next day.");
+    lastFetch = now;
+
     day++;
-    await updateMarketReal(); // Get real prices
+    await updateMarketReal();
     newsEvent();
     updateChart();
     render();
 }
 
+// ------------------- SAVE / LOAD -------------------
 function saveGame() {
     localStorage.setItem("moneySim", JSON.stringify({
         cash, day, assets, portfolio, history
@@ -175,5 +202,5 @@ function loadGame() {
     render();
 }
 
+// ------------------- INITIAL RENDER -------------------
 render();
-
