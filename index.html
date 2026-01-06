@@ -2,60 +2,21 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Money Simulator - Real Market</title>
-
-    <!-- Chart.js -->
+    <title>Money Simulator - Live Market</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
     <style>
-        body {
-            background: #0f172a;
-            color: white;
-            font-family: Arial, sans-serif;
-            text-align: center;
-            margin: 0;
-            padding: 20px;
-        }
-
-        h1 { margin-bottom: 10px; }
-
-        .box {
-            background: #1e293b;
-            padding: 15px;
-            margin: 10px auto;
-            border-radius: 10px;
-            max-width: 420px;
-        }
-
-        input, button {
-            padding: 8px;
-            margin: 5px;
-            border-radius: 6px;
-            border: none;
-        }
-
-        button {
-            background: #22c55e;
-            color: black;
-            cursor: pointer;
-            font-weight: bold;
-        }
-
-        button:hover {
-            background: #16a34a;
-        }
-
-        canvas {
-            background: white;
-            border-radius: 10px;
-            margin-top: 15px;
-            max-width: 600px;
-        }
+        body { background:#0f172a; color:white; font-family:Arial,sans-serif; text-align:center; padding:20px; }
+        h1 { margin-bottom:10px; }
+        .box { background:#1e293b; padding:15px; margin:10px auto; border-radius:10px; max-width:450px; }
+        input, button { padding:8px; margin:5px; border-radius:6px; border:none; }
+        button { background:#22c55e; color:black; cursor:pointer; font-weight:bold; }
+        button:hover { background:#16a34a; }
+        canvas { background:white; border-radius:10px; margin-top:15px; max-width:700px; }
     </style>
 </head>
 <body>
 
-<h1>💰 Money Simulator - Real Market</h1>
+<h1>💰 Money Simulator - Live Market</h1>
 <p id="day">Day 1</p>
 
 <div class="box" id="market"></div>
