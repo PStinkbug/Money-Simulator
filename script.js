@@ -1,192 +1,168 @@
 let cash = 10000;
-let day = 1;
 
-// Assets
+// Store both price and change percentage
 let assets = {
-    BTC: 30000,
-    ETH: 2000,
-    LTC: 100,
-    AAPL: 150,
-    TSLA: 250,
-    MSFT: 300
+    AAPL: { price: 150, change: 0 },
+    TSLA: { price: 250, change: 0 },
+    BTC: { price: 30000, change: 0 },
+    ETH: { price: 2000, change: 0 }
 };
 
-// Portfolio
-let portfolio = { BTC:0, ETH:0, LTC:0, AAPL:0, TSLA:0, MSFT:0 };
-
-// Price history for chart (all assets)
-let history = {
-    BTC: [],
-    ETH: [],
-    LTC: [],
-    AAPL: [],
-    TSLA: [],
-    MSFT: []
+let portfolio = {
+    AAPL: 0,
+    TSLA: 0,
+    BTC: 0,
+    ETH: 0
 };
 
-// News events
-const newsEvents = [
-    { text:"Crypto surges!", effect:0.15 },
-    { text:"Crypto crash!", effect:-0.2 },
-    { text:"Tech stocks rally!", effect:0.1 },
-    { text:"Market uncertainty!", effect:-0.1 }
-];
+// Store purchase prices for calculating gains/losses
+let purchasePrices = {
+    AAPL: 0,
+    TSLA: 0,
+    BTC: 0,
+    ETH: 0
+};
 
-// Chart.js setup
-const ctx = document.getElementById("priceChart").getContext("2d");
-const chart = new Chart(ctx, {
-    type:"line",
-    data:{
-        labels:[],
-        datasets:[
-            { label:"BTC", data:[], borderColor:"green", tension:0.3 },
-            { label:"ETH", data:[], borderColor:"orange", tension:0.3 },
-            { label:"LTC", data:[], borderColor:"purple", tension:0.3 },
-            { label:"AAPL", data:[], borderColor:"blue", tension:0.3 },
-            { label:"TSLA", data:[], borderColor:"red", tension:0.3 },
-            { label:"MSFT", data:[], borderColor:"yellow", tension:0.3 }
-        ]
+function updateMarket() {
+    for (let asset in assets) {
+        // Generate random change between -5% and +5%
+        let changePercent = (Math.random() * 0.1) - 0.05;
+        let oldPrice = assets[asset].price;
+        
+        // Update price with change
+        assets[asset].price = Math.round(assets[asset].price * (1 + changePercent));
+        
+        // Calculate actual change amount and percentage
+        let changeAmount = assets[asset].price - oldPrice;
+        assets[asset].change = Math.round(changeAmount);
     }
-});
-
-// ------------------- FETCH REAL PRICES -------------------
-async function fetchCryptoPrice(symbol) {
-    try {
-        const resp = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${symbol}&vs_currencies=usd`);
-        const data = await resp.json();
-        return data[symbol]?.usd || assets[symbol];
-    } catch { return assets[symbol]; }
-}
-
-async function fetchStockPrice(symbol) {
-    try {
-        const resp = await fetch(`https://financialmodelingprep.com/api/v3/quote/${symbol}?apikey=demo`);
-        const data = await resp.json();
-        return data[0]?.price || assets[symbol];
-    } catch { return assets[symbol]; }
-}
-
-// ------------------- RANDOM FLUCTUATION -------------------
-function randomFluctuation(price) {
-    const change = (Math.random()*0.06)-0.03; // -3% to +3%
-    return price*(1+change);
-}
-
-async function updateMarketReal() {
-    // Crypto
-    assets.BTC = randomFluctuation(await fetchCryptoPrice("bitcoin"));
-    assets.ETH = randomFluctuation(await fetchCryptoPrice("ethereum"));
-    assets.LTC = randomFluctuation(await fetchCryptoPrice("litecoin"));
-
-    // Stocks
-    assets.AAPL = randomFluctuation(await fetchStockPrice("AAPL"));
-    assets.TSLA = randomFluctuation(await fetchStockPrice("TSLA"));
-    assets.MSFT = randomFluctuation(await fetchStockPrice("MSFT"));
-}
-
-// ------------------- GAME LOGIC -------------------
-function newsEvent() {
-    if(Math.random()<0.3){
-        const event = newsEvents[Math.floor(Math.random()*newsEvents.length)];
-        alert(event.text);
-        for(let a in assets) assets[a]*=(1+event.effect);
-    }
+    render();
 }
 
 function render() {
-    document.getElementById("day").innerText = `Day ${day}`;
-
-    let marketHTML="<h3>Market</h3>";
-    for(let a in assets) marketHTML+=`${a}: $${Math.round(assets[a])}<br>`;
-    document.getElementById("market").innerHTML=marketHTML;
-
-    let total=cash;
-    let portfolioHTML=`<h3>Portfolio</h3>Cash: $${Math.round(cash)}<br>`;
-    for(let a in portfolio){
-        total+=portfolio[a]*assets[a];
-        portfolioHTML+=`${a}: ${portfolio[a]}<br>`;
+    let marketHTML = "<h3>📈 Market Prices</h3>";
+    for (let a in assets) {
+        let changeSymbol = assets[a].change >= 0 ? "📈" : "📉";
+        let changeClass = assets[a].change >= 0 ? "color: #4CAF50;" : "color: #F44336;";
+        marketHTML += `${a}: $${assets[a].price} <span style="${changeClass}">${changeSymbol} $${Math.abs(assets[a].change)}</span><br>`;
     }
-    portfolioHTML+=`<br>Total Value: $${Math.round(total)}`;
-    document.getElementById("portfolio").innerHTML=portfolioHTML;
+    document.getElementById("market").innerHTML = marketHTML;
+
+    let total = cash;
+    let portHTML = `<h3>💰 Portfolio</h3>Cash: $${cash.toLocaleString()}<br>`;
+    
+    for (let a in portfolio) {
+        if (portfolio[a] > 0) {
+            let value = portfolio[a] * assets[a].price;
+            total += value;
+            let avgPrice = purchasePrices[a] / portfolio[a] || assets[a].price;
+            let gainLoss = value - (portfolio[a] * avgPrice);
+            let gainLossPercent = avgPrice > 0 ? ((assets[a].price - avgPrice) / avgPrice * 100).toFixed(2) : 0;
+            
+            portHTML += `${a}: ${portfolio[a]} shares<br>`;
+            portHTML += `&nbsp;&nbsp;Value: $${value.toLocaleString()}<br>`;
+            portHTML += `&nbsp;&nbsp;Avg Price: $${avgPrice.toFixed(2)}<br>`;
+            portHTML += `&nbsp;&nbsp;P/L: $${gainLoss.toFixed(2)} (${gainLossPercent}%)<br>`;
+        }
+    }
+    
+    portHTML += `<br><strong>Total Value: $${Math.round(total).toLocaleString()}</strong>`;
+    document.getElementById("portfolio").innerHTML = portHTML;
 }
 
-// ------------------- UPDATE CHART -------------------
-function updateChart() {
-    history.BTC.push(Math.round(assets.BTC));
-    history.ETH.push(Math.round(assets.ETH));
-    history.LTC.push(Math.round(assets.LTC));
-    history.AAPL.push(Math.round(assets.AAPL));
-    history.TSLA.push(Math.round(assets.TSLA));
-    history.MSFT.push(Math.round(assets.MSFT));
-
-    chart.data.labels.push(day);
-    chart.data.datasets[0].data = history.BTC;
-    chart.data.datasets[1].data = history.ETH;
-    chart.data.datasets[2].data = history.LTC;
-    chart.data.datasets[3].data = history.AAPL;
-    chart.data.datasets[4].data = history.TSLA;
-    chart.data.datasets[5].data = history.MSFT;
-    chart.update();
-}
-
-// ------------------- PLAYER ACTIONS -------------------
 function buy() {
-    let asset=document.getElementById("asset").value.toUpperCase();
-    let amount=Number(document.getElementById("amount").value);
-    if(!assets[asset] || amount<=0) return alert("Invalid input");
-    let cost=assets[asset]*amount;
-    if(cost>cash) return alert("Not enough cash");
-    cash-=cost;
-    portfolio[asset]+=amount;
+    let asset = document.getElementById("asset").value.toUpperCase().trim();
+    let amount = parseFloat(document.getElementById("amount").value);
+    
+    // Input validation
+    if (!asset || asset.length === 0) {
+        alert("Please enter an asset name");
+        return;
+    }
+    
+    if (!assets[asset]) {
+        alert(`Invalid asset. Available: ${Object.keys(assets).join(", ")}`);
+        return;
+    }
+    
+    if (isNaN(amount) || amount <= 0) {
+        alert("Please enter a valid positive amount");
+        return;
+    }
+    
+    let cost = assets[asset].price * amount;
+    
+    if (cost > cash) {
+        alert(`Not enough cash! You need $${cost.toFixed(2)} but only have $${cash.toFixed(2)}`);
+        return;
+    }
+    
+    // Update portfolio and purchase prices
+    cash -= cost;
+    portfolio[asset] += amount;
+    purchasePrices[asset] += cost;
+    
+    // Clear inputs
+    document.getElementById("amount").value = "";
+    
     render();
 }
 
 function sell() {
-    let asset=document.getElementById("asset").value.toUpperCase();
-    let amount=Number(document.getElementById("amount").value);
-    if(portfolio[asset]<amount || amount<=0) return alert("Invalid input");
-    cash+=assets[asset]*amount;
-    portfolio[asset]-=amount;
+    let asset = document.getElementById("asset").value.toUpperCase().trim();
+    let amount = parseFloat(document.getElementById("amount").value);
+    
+    // Input validation
+    if (!asset || asset.length === 0) {
+        alert("Please enter an asset name");
+        return;
+    }
+    
+    if (!assets[asset]) {
+        alert(`Invalid asset. Available: ${Object.keys(assets).join(", ")}`);
+        return;
+    }
+    
+    if (isNaN(amount) || amount <= 0) {
+        alert("Please enter a valid positive amount");
+        return;
+    }
+    
+    if (portfolio[asset] < amount) {
+        alert(`Not enough ${asset}! You have ${portfolio[asset]} but trying to sell ${amount}`);
+        return;
+    }
+    
+    let revenue = assets[asset].price * amount;
+    
+    // Update portfolio and purchase prices (pro-rata reduction)
+    cash += revenue;
+    portfolio[asset] -= amount;
+    
+    // Calculate proportion of holdings being sold
+    let proportion = amount / (portfolio[asset] + amount);
+    purchasePrices[asset] -= purchasePrices[asset] * proportion;
+    
+    // Clear inputs
+    document.getElementById("amount").value = "";
+    
     render();
 }
 
-// ------------------- NEXT DAY -------------------
-let lastFetch = 0;
-async function nextDay() {
-    const now = Date.now();
-    if(now-lastFetch<10000) return alert("Wait 10 seconds before next day.");
-    lastFetch=now;
-
-    day++;
-    await updateMarketReal();
-    newsEvent();
-    updateChart();
-    render();
+function nextDay() {
+    updateMarket();
 }
 
-// ------------------- SAVE / LOAD -------------------
-function saveGame() {
-    localStorage.setItem("moneySim", JSON.stringify({cash, day, assets, portfolio, history}));
-    alert("Game saved!");
-}
+// Add keyboard shortcuts
+document.addEventListener('keydown', function(event) {
+    if (event.key === 'Enter') {
+        buy();
+    }
+    if (event.key === 'Escape') {
+        document.getElementById("amount").value = "";
+        document.getElementById("asset").value = "";
+    }
+});
 
-function loadGame() {
-    const data=JSON.parse(localStorage.getItem("moneySim"));
-    if(!data) return alert("No save found");
-    cash=data.cash;
-    day=data.day;
-    assets=data.assets;
-    portfolio=data.portfolio;
-    history=data.history;
-    chart.data.labels=history.BTC.map((_,i)=>i+1);
-    chart.data.datasets[0].data=history.BTC;
-    chart.data.datasets[1].data=history.ETH;
-    chart.data.datasets[2].data=history.LTC;
-    chart.data.datasets[3].data=history.AAPL;
-    chart.data.datasets[4].data=history.TSLA;
-    chart.data.datasets[5].data=history.MSFT;
-    chart.update();
-    render();
-}
-
+// Initialize
 render();
