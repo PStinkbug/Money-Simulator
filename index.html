@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>💰 Crypto Trading Simulator</title>
+    <title>🎮 Crypto Trading Game</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -22,7 +22,7 @@
         }
         
         .container {
-            max-width: 1200px;
+            max-width: 1400px;
             margin: 0 auto;
         }
         
@@ -33,11 +33,35 @@
             background: rgba(0, 0, 0, 0.5);
             border-radius: 15px;
             border: 1px solid #333;
+            position: relative;
+        }
+        
+        .player-stats {
+            position: absolute;
+            right: 20px;
+            top: 20px;
+            display: flex;
+            gap: 15px;
+        }
+        
+        .stat-badge {
+            background: rgba(30, 30, 40, 0.8);
+            padding: 8px 15px;
+            border-radius: 20px;
+            border: 1px solid #444;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .stat-value {
+            color: #f7931a;
+            font-weight: bold;
         }
         
         h1 {
             font-size: 2.8rem;
-            background: linear-gradient(45deg, #f7931a, #00d4ff);
+            background: linear-gradient(45deg, #f7931a, #00d4ff, #ff00ff);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             margin-bottom: 10px;
@@ -81,11 +105,294 @@
             font-size: 1.5rem;
         }
         
+        .game-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #333;
+            padding-bottom: 10px;
+        }
+        
+        .tab-btn {
+            padding: 10px 20px;
+            background: rgba(30, 30, 40, 0.8);
+            border: none;
+            border-radius: 8px;
+            color: #aaa;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .tab-btn.active {
+            background: rgba(247, 147, 26, 0.2);
+            color: #f7931a;
+            border: 1px solid #f7931a;
+        }
+        
+        .tab-btn:hover {
+            background: rgba(50, 50, 70, 0.8);
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .achievements-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        
+        .achievement-card {
+            background: rgba(30, 30, 40, 0.9);
+            border-radius: 10px;
+            padding: 15px;
+            border: 2px solid #333;
+            transition: all 0.3s;
+            text-align: center;
+        }
+        
+        .achievement-card.locked {
+            filter: grayscale(100%);
+            opacity: 0.6;
+        }
+        
+        .achievement-card.unlocked {
+            border-color: #f7931a;
+            box-shadow: 0 0 15px rgba(247, 147, 26, 0.3);
+        }
+        
+        .achievement-icon {
+            font-size: 2rem;
+            margin-bottom: 10px;
+            color: #f7931a;
+        }
+        
+        .achievement-title {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .achievement-desc {
+            font-size: 0.9rem;
+            color: #aaa;
+            margin-bottom: 10px;
+        }
+        
+        .achievement-reward {
+            font-size: 0.8rem;
+            color: #4CAF50;
+        }
+        
+        .xp-bar {
+            width: 100%;
+            height: 20px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        
+        .xp-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #00d4ff, #f7931a);
+            border-radius: 10px;
+            transition: width 0.5s;
+        }
+        
+        .level-display {
+            text-align: center;
+            font-size: 1.2rem;
+            margin-bottom: 10px;
+        }
+        
+        .level-number {
+            color: #00d4ff;
+            font-weight: bold;
+            font-size: 1.5rem;
+        }
+        
+        .challenge-card {
+            background: rgba(30, 30, 40, 0.9);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+            border: 2px solid #333;
+            transition: all 0.3s;
+        }
+        
+        .challenge-card.active {
+            border-color: #4CAF50;
+            background: rgba(76, 175, 80, 0.1);
+        }
+        
+        .challenge-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .challenge-title {
+            font-weight: bold;
+            color: #f7931a;
+        }
+        
+        .challenge-progress {
+            font-size: 0.9rem;
+            color: #aaa;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 10px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 5px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4CAF50, #2E7D32);
+            border-radius: 5px;
+            transition: width 0.5s;
+        }
+        
+        .challenge-reward {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 10px;
+        }
+        
+        .reward-amount {
+            color: #FFD700;
+            font-weight: bold;
+        }
+        
+        .quest-log {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .quest-item {
+            background: rgba(30, 30, 40, 0.7);
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 8px;
+            border-left: 4px solid #f7931a;
+        }
+        
+        .quest-completed {
+            border-left-color: #4CAF50;
+            opacity: 0.7;
+        }
+        
+        .leaderboard {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .leaderboard-item {
+            background: rgba(30, 30, 40, 0.7);
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .rank {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: #f7931a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+        
+        .rank-1 {
+            background: #FFD700;
+        }
+        
+        .rank-2 {
+            background: #C0C0C0;
+        }
+        
+        .rank-3 {
+            background: #CD7F32;
+        }
+        
+        .player-name {
+            flex: 1;
+            font-weight: bold;
+        }
+        
+        .player-score {
+            color: #f7931a;
+            font-weight: bold;
+        }
+        
+        .upgrades-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 15px;
+        }
+        
+        .upgrade-card {
+            background: rgba(30, 30, 40, 0.9);
+            border-radius: 10px;
+            padding: 15px;
+            border: 2px solid #333;
+            transition: all 0.3s;
+        }
+        
+        .upgrade-card.purchased {
+            border-color: #4CAF50;
+            opacity: 0.7;
+        }
+        
+        .upgrade-card.available {
+            border-color: #00d4ff;
+            cursor: pointer;
+        }
+        
+        .upgrade-card.available:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(0, 212, 255, 0.3);
+        }
+        
+        .upgrade-cost {
+            color: #FFD700;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        
+        .upgrade-effect {
+            color: #4CAF50;
+            font-size: 0.9rem;
+            margin-top: 5px;
+        }
+        
         .market-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
             gap: 15px;
             margin-top: 15px;
+            max-height: 500px;
+            overflow-y: auto;
         }
         
         .crypto-card {
@@ -248,13 +555,6 @@
             border-left: 4px solid #2196F3;
         }
         
-        .portfolio-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 10px;
-        }
-        
         .total-value {
             font-size: 2rem;
             font-weight: bold;
@@ -271,26 +571,18 @@
         .news-ticker {
             background: rgba(20, 20, 30, 0.9);
             border-radius: 10px;
-            padding: 15px;
+            padding: 8px 15px;
             margin-top: 20px;
             border-left: 4px solid #9C27B0;
             overflow: hidden;
+            height: 40px;
+            position: relative;
         }
         
         .news-content {
-            display: flex;
-            animation: ticker 30s linear infinite;
-        }
-        
-        .news-item {
-            margin-right: 40px;
+            position: absolute;
             white-space: nowrap;
-            color: #aaa;
-        }
-        
-        .news-item i {
-            margin-right: 10px;
-            color: #f7931a;
+            animation: ticker 60s linear infinite;
         }
         
         @keyframes ticker {
@@ -300,6 +592,13 @@
             100% {
                 transform: translateX(-100%);
             }
+        }
+        
+        .news-item {
+            display: inline-block;
+            margin-right: 40px;
+            color: #aaa;
+            font-size: 0.9rem;
         }
         
         .transaction-history {
@@ -411,134 +710,285 @@
             border-color: #f7931a;
             color: #f7931a;
         }
+        
+        .game-event {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            padding: 30px;
+            border-radius: 15px;
+            border: 3px solid #f7931a;
+            z-index: 1000;
+            text-align: center;
+            animation: popIn 0.5s;
+            display: none;
+        }
+        
+        @keyframes popIn {
+            0% {
+                transform: translate(-50%, -50%) scale(0.5);
+                opacity: 0;
+            }
+            100% {
+                transform: translate(-50%, -50%) scale(1);
+                opacity: 1;
+            }
+        }
+        
+        .event-title {
+            font-size: 2rem;
+            color: #f7931a;
+            margin-bottom: 10px;
+        }
+        
+        .event-description {
+            font-size: 1.2rem;
+            margin-bottom: 20px;
+        }
+        
+        .event-reward {
+            font-size: 1.5rem;
+            color: #FFD700;
+            margin-bottom: 20px;
+        }
+        
+        .close-event {
+            padding: 10px 20px;
+            background: #f7931a;
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <header>
-            <h1><i class="fas fa-coins"></i> Crypto Trading Simulator</h1>
-            <p class="subtitle">Trade cryptocurrencies in real-time simulation. No real money involved!</p>
+            <div class="player-stats">
+                <div class="stat-badge">
+                    <i class="fas fa-trophy"></i>
+                    Level: <span class="stat-value" id="playerLevel">1</span>
+                </div>
+                <div class="stat-badge">
+                    <i class="fas fa-star"></i>
+                    XP: <span class="stat-value" id="playerXP">0</span>
+                </div>
+                <div class="stat-badge">
+                    <i class="fas fa-coins"></i>
+                    Tokens: <span class="stat-value" id="playerTokens">100</span>
+                </div>
+                <div class="stat-badge">
+                    <i class="fas fa-medal"></i>
+                    Streak: <span class="stat-value" id="playerStreak">1</span>
+                </div>
+            </div>
+            
+            <h1><i class="fas fa-gamepad"></i> Crypto Trading Game</h1>
+            <p class="subtitle">Trade, Level Up, Complete Challenges, and Compete on the Leaderboard!</p>
         </header>
         
-        <div class="dashboard">
-            <div class="card">
-                <h2><i class="fas fa-chart-line"></i> Market Overview</h2>
-                <div class="market-grid" id="marketGrid"></div>
+        <div class="game-tabs">
+            <button class="tab-btn active" onclick="switchTab('market')">
+                <i class="fas fa-chart-line"></i> Market
+            </button>
+            <button class="tab-btn" onclick="switchTab('portfolio')">
+                <i class="fas fa-wallet"></i> Portfolio
+            </button>
+            <button class="tab-btn" onclick="switchTab('achievements')">
+                <i class="fas fa-trophy"></i> Achievements
+            </button>
+            <button class="tab-btn" onclick="switchTab('challenges')">
+                <i class="fas fa-flag-checkered"></i> Challenges
+            </button>
+            <button class="tab-btn" onclick="switchTab('leaderboard')">
+                <i class="fas fa-crown"></i> Leaderboard
+            </button>
+            <button class="tab-btn" onclick="switchTab('upgrades')">
+                <i class="fas fa-rocket"></i> Upgrades
+            </button>
+        </div>
+        
+        <!-- Market Tab -->
+        <div id="market-tab" class="tab-content active">
+            <div class="dashboard">
+                <div class="card">
+                    <h2><i class="fas fa-chart-line"></i> Market Overview</h2>
+                    <div class="market-grid" id="marketGrid"></div>
+                </div>
+                
+                <div class="card">
+                    <h2><i class="fas fa-wallet"></i> Portfolio</h2>
+                    <div class="portfolio-grid" id="portfolioGrid"></div>
+                    <div class="total-value" id="totalValue">$10,000.00</div>
+                    <div class="stats">
+                        <div class="stat-card">
+                            <div class="stat-label">Today's P&L</div>
+                            <div class="stat-value positive-stat" id="dailyPnl">+$0.00</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Total P&L</div>
+                            <div class="stat-value positive-stat" id="totalPnl">+$0.00</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Win Rate</div>
+                            <div class="stat-value" id="winRate">0%</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="trade-panel">
+                <h2><i class="fas fa-exchange-alt"></i> Trading Platform</h2>
+                
+                <div class="asset-selector" id="assetSelector"></div>
+                
+                <div class="trade-form">
+                    <div class="form-group">
+                        <label for="asset"><i class="fas fa-coins"></i> Cryptocurrency</label>
+                        <input type="text" id="asset" class="form-control" placeholder="e.g., BTC, ETH" list="assetsList">
+                        <datalist id="assetsList"></datalist>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="amount"><i class="fas fa-hashtag"></i> Amount</label>
+                        <input type="number" id="amount" class="form-control" placeholder="0.00" step="0.001" min="0">
+                    </div>
+                </div>
+                
+                <div class="btn-group">
+                    <button class="btn btn-buy" onclick="buy()">
+                        <i class="fas fa-arrow-up"></i> Buy
+                    </button>
+                    <button class="btn btn-sell" onclick="sell()">
+                        <i class="fas fa-arrow-down"></i> Sell
+                    </button>
+                    <button class="btn btn-next" onclick="nextDay()">
+                        <i class="fas fa-forward"></i> Next Day
+                    </button>
+                </div>
+                
+                <div class="day-counter">
+                    <i class="fas fa-calendar-day"></i> Day: <span id="dayCounter">1</span>
+                </div>
             </div>
             
             <div class="card">
-                <h2><i class="fas fa-wallet"></i> Portfolio</h2>
-                <div class="portfolio-grid" id="portfolioGrid"></div>
-                <div class="total-value" id="totalValue">$10,000.00</div>
+                <h2><i class="fas fa-chart-area"></i> Price Chart</h2>
+                <div class="chart-container">
+                    <canvas id="priceChart"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Portfolio Tab -->
+        <div id="portfolio-tab" class="tab-content">
+            <div class="card">
+                <h2><i class="fas fa-user-circle"></i> Player Profile</h2>
+                <div class="level-display">
+                    Level <span class="level-number" id="levelDisplay">1</span>
+                </div>
+                <div class="xp-bar">
+                    <div class="xp-fill" id="xpBar" style="width: 0%"></div>
+                </div>
+                <div style="text-align: center; margin-bottom: 20px;">
+                    <span id="currentXP">0</span> / <span id="nextLevelXP">100</span> XP
+                </div>
+                
+                <div class="wallet-address" id="walletAddress">0x0000000000000000000000000000000000000000</div>
+                
                 <div class="stats">
                     <div class="stat-card">
-                        <div class="stat-label">Today's P&L</div>
-                        <div class="stat-value positive-stat" id="dailyPnl">+$0.00</div>
+                        <div class="stat-label">Total Trades</div>
+                        <div class="stat-value" id="totalTradesCount">0</div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-label">Total P&L</div>
-                        <div class="stat-value positive-stat" id="totalPnl">+$0.00</div>
+                        <div class="stat-label">Profit Rate</div>
+                        <div class="stat-value" id="profitRate">0%</div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-label">Best Performer</div>
-                        <div class="stat-value" id="bestPerformer">BTC</div>
+                        <div class="stat-label">Days Played</div>
+                        <div class="stat-value" id="daysPlayed">1</div>
                     </div>
                 </div>
             </div>
-        </div>
-        
-        <div class="trade-panel">
-            <h2><i class="fas fa-exchange-alt"></i> Trading Platform</h2>
             
-            <div class="asset-selector" id="assetSelector"></div>
-            
-            <div class="trade-form">
-                <div class="form-group">
-                    <label for="asset"><i class="fas fa-coins"></i> Cryptocurrency</label>
-                    <input type="text" id="asset" class="form-control" placeholder="e.g., BTC, ETH" list="assetsList">
-                    <datalist id="assetsList"></datalist>
-                </div>
-                
-                <div class="form-group">
-                    <label for="amount"><i class="fas fa-hashtag"></i> Amount</label>
-                    <input type="number" id="amount" class="form-control" placeholder="0.00" step="0.001" min="0">
-                </div>
-                
-                <div class="form-group">
-                    <label for="orderType"><i class="fas fa-tasks"></i> Order Type</label>
-                    <select id="orderType" class="form-control">
-                        <option value="market">Market Order</option>
-                        <option value="limit">Limit Order</option>
-                    </select>
-                </div>
-                
-                <div class="form-group" id="limitPriceGroup" style="display: none;">
-                    <label for="limitPrice"><i class="fas fa-tag"></i> Limit Price ($)</label>
-                    <input type="number" id="limitPrice" class="form-control" placeholder="0.00" step="0.01" min="0">
-                </div>
-            </div>
-            
-            <div class="btn-group">
-                <button class="btn btn-buy" onclick="buy()">
-                    <i class="fas fa-arrow-up"></i> Buy
-                </button>
-                <button class="btn btn-sell" onclick="sell()">
-                    <i class="fas fa-arrow-down"></i> Sell
-                </button>
-                <button class="btn btn-next" onclick="nextDay()">
-                    <i class="fas fa-forward"></i> Next Day
-                </button>
-            </div>
-            
-            <div class="day-counter">
-                <i class="fas fa-calendar-day"></i> Day: <span id="dayCounter">1</span>
+            <div class="card">
+                <h2><i class="fas fa-history"></i> Transaction History</h2>
+                <div class="transaction-history" id="transactionHistory"></div>
             </div>
         </div>
         
-        <div class="card">
-            <h2><i class="fas fa-chart-area"></i> Price Chart</h2>
-            <div class="chart-container">
-                <canvas id="priceChart"></canvas>
+        <!-- Achievements Tab -->
+        <div id="achievements-tab" class="tab-content">
+            <div class="card">
+                <h2><i class="fas fa-trophy"></i> Achievements</h2>
+                <div style="text-align: center; margin-bottom: 20px;">
+                    Progress: <span id="achievementsProgress">0/20</span>
+                </div>
+                <div class="achievements-grid" id="achievementsGrid"></div>
             </div>
         </div>
         
-        <div class="card">
-            <h2><i class="fas fa-history"></i> Transaction History</h2>
-            <div class="transaction-history" id="transactionHistory"></div>
+        <!-- Challenges Tab -->
+        <div id="challenges-tab" class="tab-content">
+            <div class="card">
+                <h2><i class="fas fa-flag-checkered"></i> Daily Challenges</h2>
+                <div id="dailyChallenges" class="quest-log"></div>
+            </div>
+            
+            <div class="card">
+                <h2><i class="fas fa-medal"></i> Milestone Quests</h2>
+                <div id="milestoneQuests" class="quest-log"></div>
+            </div>
+        </div>
+        
+        <!-- Leaderboard Tab -->
+        <div id="leaderboard-tab" class="tab-content">
+            <div class="card">
+                <h2><i class="fas fa-crown"></i> Global Leaderboard</h2>
+                <div class="leaderboard" id="globalLeaderboard"></div>
+            </div>
+            
+            <div class="card">
+                <h2><i class="fas fa-users"></i> Friends Leaderboard</h2>
+                <div class="leaderboard" id="friendsLeaderboard"></div>
+            </div>
+        </div>
+        
+        <!-- Upgrades Tab -->
+        <div id="upgrades-tab" class="tab-content">
+            <div class="card">
+                <h2><i class="fas fa-rocket"></i> Trading Upgrades</h2>
+                <div class="upgrades-grid" id="tradingUpgrades"></div>
+            </div>
+            
+            <div class="card">
+                <h2><i class="fas fa-chart-pie"></i> Market Analysis Tools</h2>
+                <div class="upgrades-grid" id="analysisUpgrades"></div>
+            </div>
         </div>
         
         <div class="news-ticker">
-            <h3><i class="fas fa-newspaper"></i> Crypto News</h3>
             <div class="news-content" id="newsContent"></div>
         </div>
         
-        <div class="card">
-            <h2><i class="fas fa-user-circle"></i> Account Details</h2>
-            <div class="wallet-address" id="walletAddress">0x0000000000000000000000000000000000000000</div>
-            <div class="stats">
-                <div class="stat-card">
-                    <div class="stat-label">Trades Today</div>
-                    <div class="stat-value" id="tradesToday">0</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-label">Win Rate</div>
-                    <div class="stat-value" id="winRate">0%</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-label">Risk Level</div>
-                    <div class="stat-value" id="riskLevel">Low</div>
-                </div>
-            </div>
+        <div class="game-event" id="gameEventPopup">
+            <div class="event-title" id="eventTitle">🎉 Achievement Unlocked! 🎉</div>
+            <div class="event-description" id="eventDescription">You've completed your first trade!</div>
+            <div class="event-reward" id="eventReward">Reward: +100 XP & 50 Tokens</div>
+            <button class="close-event" onclick="closeEventPopup()">Awesome!</button>
         </div>
         
         <footer>
-            <p>⚠️ This is a simulation for educational purposes only. No real money is involved.</p>
-            <p>Cryptocurrency trading involves substantial risk of loss and is not suitable for every investor.</p>
-            <p>© 2023 Crypto Trading Simulator | v1.2.0</p>
+            <p>🎮 This is a trading simulation game for entertainment purposes only. No real money is involved.</p>
+            <p>© 2023 Crypto Trading Game | v2.0.0</p>
         </footer>
     </div>
 
     <script src="script.js"></script>
 </body>
 </html>
-
