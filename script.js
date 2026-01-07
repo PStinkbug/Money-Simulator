@@ -1,1034 +1,1106 @@
 // ====================
-// GAME STATE
+// CASINO SYSTEM
 // ====================
-let cash = 10000;
-let day = 1;
-let tradesToday = 0;
-let totalTrades = 0;
-let profitableTrades = 0;
-let selectedAsset = "BTC";
-let priceHistory = {};
-let chart = null;
-let previousPrices = {};
 
-// Player progression
-let player = {
-    level: 1,
-    xp: 0,
-    xpToNextLevel: 100,
-    tokens: 100,
-    dailyStreak: 1,
-    lastPlayed: new Date().toDateString(),
-    achievements: [],
-    completedChallenges: [],
-    upgrades: [],
-    totalProfit: 0,
-    highestPortfolioValue: 10000
+let casino = {
+    unlocked: false,
+    balance: 0,
+    totalWins: 0,
+    totalLosses: 0,
+    currentGame: null,
+    minBet: 10,
+    maxBet: 10000
 };
 
-// Transaction history
-let transactions = [];
-
-// ====================
-// ASSETS DATA
-// ====================
-let assets = {
-    BTC: {
-        name: "Bitcoin",
-        price: 32000,
-        change24h: 0,
-        marketCap: 620000000000,
-        volume24h: 15000000000,
-        volatility: 0.08,
-        icon: "fab fa-bitcoin",
-        color: "#F7931A",
-        type: "crypto"
-    },
-    ETH: {
-        name: "Ethereum",
-        price: 2100,
-        change24h: 0,
-        marketCap: 250000000000,
-        volume24h: 8000000000,
-        volatility: 0.09,
-        icon: "fab fa-ethereum",
-        color: "#627EEA",
-        type: "crypto"
-    },
-    SOL: {
-        name: "Solana",
-        price: 42.50,
-        change24h: 0,
-        marketCap: 17000000000,
-        volume24h: 600000000,
-        volatility: 0.12,
-        icon: "fas fa-fire",
-        color: "#00FFA3",
-        type: "crypto"
-    },
-    DOGE: {
-        name: "Dogecoin",
-        price: 0.075,
-        change24h: 0,
-        marketCap: 10000000000,
-        volume24h: 400000000,
-        volatility: 0.15,
-        icon: "fas fa-dog",
-        color: "#C2A633",
-        type: "crypto"
-    },
-    AAPL: {
-        name: "Apple Inc.",
-        price: 175.25,
-        change24h: 0,
-        marketCap: 2750000000000,
-        volume24h: 75000000,
-        volatility: 0.02,
-        icon: "fas fa-apple-alt",
-        color: "#A2AAAD",
-        type: "stock"
-    },
-    TSLA: {
-        name: "Tesla",
-        price: 240.00,
-        change24h: 0,
-        marketCap: 760000000000,
-        volume24h: 120000000,
-        volatility: 0.05,
-        icon: "fas fa-car",
-        color: "#CC0000",
-        type: "stock"
-    },
-    NVDA: {
-        name: "NVIDIA",
-        price: 450.00,
-        change24h: 0,
-        marketCap: 1110000000000,
-        volume24h: 45000000,
-        volatility: 0.04,
-        icon: "fas fa-microchip",
-        color: "#76B900",
-        type: "stock"
-    },
-    MSFT: {
-        name: "Microsoft",
-        price: 330.50,
-        change24h: 0,
-        marketCap: 2460000000000,
-        volume24h: 25000000,
-        volatility: 0.02,
-        icon: "fab fa-windows",
-        color: "#F25022",
-        type: "stock"
-    }
+// Casino Upgrade - Add to your existing upgrades array:
+const casinoUpgrade = {
+    id: 'casino_access',
+    name: 'VIP Casino Access',
+    description: 'Unlock the exclusive casino with roulette, blackjack, and poker',
+    icon: 'fas fa-dice',
+    cost: 100000,
+    effect: () => unlockCasino()
 };
 
-// Initialize portfolio
-let portfolio = {};
-for (let symbol in assets) {
-    portfolio[symbol] = { amount: 0, avgPrice: 0, totalCost: 0, purchaseDay: 0 };
+// Add this upgrade to your existing upgrades array
+upgrades.push(casinoUpgrade);
+
+// ====================
+// CASINO UNLOCK
+// ====================
+function unlockCasino() {
+    casino.unlocked = true;
+    casino.balance = 0; // Start with $0 in casino
+    
+    // Show casino tab
+    document.getElementById('casinoTabBtn').style.display = 'flex';
+    
+    // Update casino status
+    document.getElementById('casinoStatus').style.display = 'block';
+    updateCasinoStats();
+    
+    // Show success message
+    showEventPopup(
+        '🎰 VIP CASINO UNLOCKED! 🎰',
+        'Congratulations! You now have access to the exclusive casino!',
+        'Transfer money from your portfolio to start playing'
+    );
 }
 
-// News headlines
-const newsHeadlines = [
-    "Bitcoin ETF approval expected this quarter",
-    "Ethereum completes Shanghai upgrade successfully",
-    "Major bank announces crypto custody services",
-    "Tech stocks rally on strong earnings reports",
-    "Crypto market shows signs of recovery",
-    "Regulatory clarity boosts market confidence"
-];
-
-// Achievements
-const achievements = [
-    {
-        id: 'first_trade',
-        name: 'First Trade',
-        description: 'Execute your first trade',
-        icon: 'fas fa-handshake',
-        xp: 50,
-        tokens: 25
-    },
-    {
-        id: 'first_profit',
-        name: 'First Profit',
-        description: 'Make your first profitable trade',
-        icon: 'fas fa-chart-line',
-        xp: 100,
-        tokens: 50
-    },
-    {
-        id: 'portfolio_20k',
-        name: 'Twenty Grand',
-        description: 'Reach $20,000 portfolio value',
-        icon: 'fas fa-money-bill-wave',
-        xp: 300,
-        tokens: 150
-    },
-    {
-        id: 'day_trader',
-        name: 'Day Trader',
-        description: 'Make 10 trades in a day',
-        icon: 'fas fa-calendar-day',
-        xp: 200,
-        tokens: 100
+function transferToCasino() {
+    const amount = parseInt(prompt("How much do you want to transfer to the casino?"));
+    
+    if (isNaN(amount) || amount <= 0) {
+        alert("Please enter a valid amount!");
+        return;
     }
-];
-
-// Challenges
-const challenges = [
-    {
-        id: 'daily_trade_3',
-        name: 'Active Trader',
-        description: 'Make 3 trades today',
-        target: 3,
-        reward: { xp: 100, tokens: 50 }
-    },
-    {
-        id: 'profit_1000',
-        name: 'Profit Hunter',
-        description: 'Make $1,000 profit',
-        target: 1000,
-        reward: { xp: 300, tokens: 150 }
+    
+    if (amount > cash) {
+        alert(`Insufficient funds! You have $${cash} but trying to transfer $${amount}`);
+        return;
     }
-];
-
-// Upgrades
-const upgrades = [
-    {
-        id: 'upgrade_fee_1',
-        name: 'Reduced Fees I',
-        description: 'Reduce trading fees by 10%',
-        icon: 'fas fa-percentage',
-        cost: 500,
-        effect: 'feeReduction'
-    },
-    {
-        id: 'upgrade_insight',
-        name: 'Market Insight',
-        description: 'See price trends before they happen',
-        icon: 'fas fa-chart-line',
-        cost: 1000,
-        effect: 'marketInsight'
+    
+    if (!casino.unlocked) {
+        alert("You need to unlock the casino first!");
+        return;
     }
-];
-
-// ====================
-// INITIALIZATION
-// ====================
-function initializePriceHistory() {
-    for (let symbol in assets) {
-        priceHistory[symbol] = [];
-        let basePrice = assets[symbol].price;
-        // Generate 30 days of historical data
-        for (let i = 0; i < 30; i++) {
-            let change = (Math.random() * assets[symbol].volatility * 2 - assets[symbol].volatility);
-            basePrice *= (1 + change);
-            priceHistory[symbol].push({
-                day: i + 1,
-                price: Math.round(basePrice * 100) / 100
-            });
-        }
-        // Set current price as the last one
-        assets[symbol].price = Math.round(basePrice * 100) / 100;
-        previousPrices[symbol] = assets[symbol].price;
-    }
+    
+    cash -= amount;
+    casino.balance += amount;
+    
+    updateCasinoStats();
+    render();
+    
+    showEventPopup(
+        '💰 Transfer Complete',
+        `Transferred $${amount} to your casino balance`,
+        `Casino Balance: $${casino.balance}`
+    );
 }
 
-// ====================
-// TAB SWITCHING - FIXED!
-// ====================
-function switchTab(tabName) {
-    console.log(`Switching to tab: ${tabName}`);
-    
-    // Hide all tab contents
-    document.querySelectorAll('.tab-content').forEach(tab => {
-        tab.classList.remove('active');
-    });
-    
-    // Remove active class from all tab buttons
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.classList.remove('active');
-    });
-    
-    // Show selected tab content
-    const tabElement = document.getElementById(`${tabName}-tab`);
-    if (tabElement) {
-        tabElement.classList.add('active');
-    } else {
-        console.error(`Tab element not found: ${tabName}-tab`);
-        // Fallback to market tab
-        document.getElementById('market-tab').classList.add('active');
+function withdrawFromCasino() {
+    if (casino.balance <= 0) {
+        alert("No money to withdraw from casino!");
+        return;
     }
     
-    // Add active class to clicked button
-    event.currentTarget.classList.add('active');
-    
-    // Render specific content for the tab
-    switch(tabName) {
-        case 'market':
-            renderMarket();
-            renderChart();
-            break;
-        case 'portfolio':
-            renderPortfolio();
-            renderProfileStats();
-            renderTransactionHistory();
-            break;
-        case 'achievements':
-            renderAchievements();
-            break;
-        case 'challenges':
-            renderChallenges();
-            break;
-        case 'upgrades':
-            renderUpgrades();
-            break;
-    }
-}
-
-// ====================
-// MARKET FUNCTIONS
-// ====================
-function updateMarket() {
-    console.log('Updating market...');
-    tradesToday = 0;
-    
-    for (let symbol in assets) {
-        let asset = assets[symbol];
-        let previousPrice = asset.price;
-        previousPrices[symbol] = previousPrice;
+    const confirmWithdraw = confirm(`Withdraw $${casino.balance} from casino?`);
+    if (confirmWithdraw) {
+        cash += casino.balance;
+        casino.balance = 0;
         
-        // Calculate price change
-        let change;
-        if (asset.type === 'crypto') {
-            // Crypto: higher volatility
-            change = (Math.random() * asset.volatility * 2 - asset.volatility);
-            // 10% chance of big move
-            if (Math.random() < 0.1) {
-                change *= 2;
+        updateCasinoStats();
+        render();
+        
+        showEventPopup(
+            '💰 Withdrawal Complete',
+            `Withdrew all money from casino back to portfolio`,
+            `Portfolio Cash: $${cash}`
+        );
+    }
+}
+
+function updateCasinoStats() {
+    document.getElementById('casinoBalance').textContent = casino.balance.toLocaleString();
+    document.getElementById('casinoWins').textContent = casino.totalWins.toLocaleString();
+    document.getElementById('casinoLosses').textContent = casino.totalLosses.toLocaleString();
+    document.getElementById('casinoNet').textContent = (casino.totalWins - casino.totalLosses).toLocaleString();
+}
+
+// ====================
+// GAME SELECTION
+// ====================
+function selectGame(game) {
+    if (!casino.unlocked) {
+        alert("You need to unlock the casino first!");
+        return;
+    }
+    
+    if (casino.balance < 100) {
+        alert("You need at least $100 in your casino balance to play!");
+        return;
+    }
+    
+    casino.currentGame = game;
+    
+    // Hide all games
+    document.getElementById('gameSelector').style.display = 'none';
+    document.getElementById('rouletteGame').style.display = 'none';
+    document.getElementById('blackjackGame').style.display = 'none';
+    document.getElementById('pokerGame').style.display = 'none';
+    
+    // Show selected game
+    switch(game) {
+        case 'roulette':
+            document.getElementById('rouletteGame').style.display = 'block';
+            initializeRoulette();
+            break;
+        case 'blackjack':
+            document.getElementById('blackjackGame').style.display = 'block';
+            initializeBlackjack();
+            break;
+        case 'poker':
+            document.getElementById('pokerGame').style.display = 'block';
+            initializePoker();
+            break;
+    }
+}
+
+function backToGameSelection() {
+    casino.currentGame = null;
+    document.getElementById('gameSelector').style.display = 'grid';
+    document.getElementById('rouletteGame').style.display = 'none';
+    document.getElementById('blackjackGame').style.display = 'none';
+    document.getElementById('pokerGame').style.display = 'none';
+}
+
+// ====================
+// ROULETTE GAME
+// ====================
+let rouletteState = {
+    bets: [],
+    wheelSpinning: false,
+    result: null
+};
+
+function initializeRoulette() {
+    const wheel = document.getElementById('rouletteWheel');
+    wheel.innerHTML = '';
+    
+    // Create roulette numbers (0-36)
+    const numbers = [
+        {number: 0, color: 'green'},
+        {number: 32, color: 'red'}, {number: 15, color: 'black'}, {number: 19, color: 'red'},
+        {number: 4, color: 'black'}, {number: 21, color: 'red'}, {number: 2, color: 'black'},
+        {number: 25, color: 'red'}, {number: 17, color: 'black'}, {number: 34, color: 'red'},
+        {number: 6, color: 'black'}, {number: 27, color: 'red'}, {number: 13, color: 'black'},
+        {number: 36, color: 'red'}, {number: 11, color: 'black'}, {number: 30, color: 'red'},
+        {number: 8, color: 'black'}, {number: 23, color: 'red'}, {number: 10, color: 'black'},
+        {number: 5, color: 'red'}, {number: 24, color: 'black'}, {number: 16, color: 'red'},
+        {number: 33, color: 'black'}, {number: 1, color: 'red'}, {number: 20, color: 'black'},
+        {number: 14, color: 'red'}, {number: 31, color: 'black'}, {number: 9, color: 'red'},
+        {number: 22, color: 'black'}, {number: 18, color: 'red'}, {number: 29, color: 'black'},
+        {number: 7, color: 'red'}, {number: 28, color: 'black'}, {number: 12, color: 'red'},
+        {number: 35, color: 'black'}, {number: 3, color: 'red'}, {number: 26, color: 'black'}
+    ];
+    
+    // Position numbers around the wheel
+    numbers.forEach((num, index) => {
+        const angle = (index / numbers.length) * 360;
+        const element = document.createElement('div');
+        element.className = `roulette-number ${num.color}`;
+        element.textContent = num.number;
+        element.style.transform = `rotate(${angle}deg) translate(125px) rotate(-${angle}deg)`;
+        wheel.appendChild(element);
+    });
+    
+    // Create betting grid
+    const grid = document.getElementById('rouletteGrid');
+    grid.innerHTML = '';
+    
+    // Add betting cells
+    for (let i = 0; i <= 36; i++) {
+        const cell = document.createElement('div');
+        cell.className = 'bet-cell';
+        cell.textContent = i;
+        cell.onclick = () => selectRouletteBet(i);
+        grid.appendChild(cell);
+    }
+    
+    // Add special bets
+    const specialBets = [
+        {label: '1-12', type: 'dozen', value: 1},
+        {label: '13-24', type: 'dozen', value: 2},
+        {label: '25-36', type: 'dozen', value: 3},
+        {label: 'Red', type: 'color', value: 'red'},
+        {label: 'Black', type: 'color', value: 'black'},
+        {label: 'Even', type: 'even'},
+        {label: 'Odd', type: 'odd'},
+        {label: '1-18', type: 'low'},
+        {label: '19-36', type: 'high'}
+    ];
+    
+    specialBets.forEach(bet => {
+        const cell = document.createElement('div');
+        cell.className = 'bet-cell';
+        cell.textContent = bet.label;
+        cell.onclick = () => selectRouletteBet(bet.type, bet.value);
+        grid.appendChild(cell);
+    });
+    
+    rouletteState.bets = [];
+    document.getElementById('rouletteResult').innerHTML = '';
+}
+
+function selectRouletteBet(type, value = null) {
+    if (rouletteState.wheelSpinning) {
+        alert("Wait for the wheel to stop spinning!");
+        return;
+    }
+    
+    const betAmount = parseInt(document.getElementById('rouletteBet').value);
+    if (isNaN(betAmount) || betAmount < casino.minBet || betAmount > casino.maxBet) {
+        alert(`Bet must be between $${casino.minBet} and $${casino.maxBet}`);
+        return;
+    }
+    
+    if (betAmount > casino.balance) {
+        alert(`Insufficient casino balance! You have $${casino.balance}`);
+        return;
+    }
+    
+    // Add bet
+    rouletteState.bets.push({type, value, amount: betAmount});
+    
+    // Highlight selected bet
+    event.target.classList.add('selected');
+    
+    // Update UI
+    document.getElementById('rouletteResult').innerHTML = 
+        `Bet placed: $${betAmount} on ${typeof value === 'number' ? 'Number ' + value : type}<br>Total bets: $${rouletteState.bets.reduce((sum, bet) => sum + bet.amount, 0)}`;
+}
+
+function setRouletteBet(amount) {
+    document.getElementById('rouletteBet').value = amount;
+}
+
+function clearRouletteBets() {
+    rouletteState.bets = [];
+    document.querySelectorAll('.bet-cell.selected').forEach(cell => {
+        cell.classList.remove('selected');
+    });
+    document.getElementById('rouletteResult').innerHTML = '';
+}
+
+function placeRouletteBet() {
+    if (rouletteState.bets.length === 0) {
+        alert("Place some bets first!");
+        return;
+    }
+    
+    const totalBet = rouletteState.bets.reduce((sum, bet) => sum + bet.amount, 0);
+    
+    if (totalBet > casino.balance) {
+        alert(`Insufficient casino balance! You have $${casino.balance}`);
+        return;
+    }
+    
+    casino.balance -= totalBet;
+    updateCasinoStats();
+    
+    showEventPopup(
+        '🎯 Bets Placed',
+        `Total bet: $${totalBet}`,
+        'Click "Spin Wheel" to play!'
+    );
+}
+
+function spinRoulette() {
+    if (rouletteState.bets.length === 0) {
+        alert("Place some bets first!");
+        return;
+    }
+    
+    if (rouletteState.wheelSpinning) {
+        return;
+    }
+    
+    rouletteState.wheelSpinning = true;
+    
+    // Spin animation
+    const wheel = document.getElementById('rouletteWheel');
+    const spins = 5 + Math.random() * 3; // 5-8 spins
+    const rotation = spins * 360 + Math.floor(Math.random() * 360);
+    
+    wheel.style.transition = 'transform 3s cubic-bezier(0.1, 0.7, 0.1, 1)';
+    wheel.style.transform = `rotate(${rotation}deg)`;
+    
+    // Determine result after spin
+    setTimeout(() => {
+        const winningNumber = Math.floor(Math.random() * 37); // 0-36
+        const winningColor = winningNumber === 0 ? 'green' : 
+                           [1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36].includes(winningNumber) ? 'red' : 'black';
+        
+        rouletteState.result = {
+            number: winningNumber,
+            color: winningColor,
+            even: winningNumber % 2 === 0 && winningNumber !== 0,
+            dozen: winningNumber === 0 ? 0 : Math.ceil(winningNumber / 12)
+        };
+        
+        // Calculate winnings
+        let totalWinnings = 0;
+        let winDetails = [];
+        
+        rouletteState.bets.forEach(bet => {
+            let wins = false;
+            let multiplier = 0;
+            
+            if (typeof bet.value === 'number') {
+                // Number bet
+                if (bet.value === winningNumber) {
+                    wins = true;
+                    multiplier = 35;
+                }
+            } else if (bet.type === 'color') {
+                // Color bet
+                if (bet.value === winningColor) {
+                    wins = true;
+                    multiplier = 1;
+                }
+            } else if (bet.type === 'dozen') {
+                // Dozen bet
+                if (bet.value === rouletteState.result.dozen) {
+                    wins = true;
+                    multiplier = 2;
+                }
+            } else if (bet.type === 'even' && winningNumber !== 0) {
+                // Even bet
+                if (rouletteState.result.even) {
+                    wins = true;
+                    multiplier = 1;
+                }
+            } else if (bet.type === 'odd' && winningNumber !== 0) {
+                // Odd bet
+                if (!rouletteState.result.even) {
+                    wins = true;
+                    multiplier = 1;
+                }
+            } else if (bet.type === 'low') {
+                // Low bet (1-18)
+                if (winningNumber >= 1 && winningNumber <= 18) {
+                    wins = true;
+                    multiplier = 1;
+                }
+            } else if (bet.type === 'high') {
+                // High bet (19-36)
+                if (winningNumber >= 19 && winningNumber <= 36) {
+                    wins = true;
+                    multiplier = 1;
+                }
             }
-        } else {
-            // Stocks: lower volatility
-            change = (Math.random() * asset.volatility * 2 - asset.volatility);
-        }
-        
-        // Update price
-        asset.price *= (1 + change);
-        asset.price = Math.round(asset.price * 100) / 100;
-        asset.change24h = ((asset.price - previousPrice) / previousPrice) * 100;
-        
-        // Update price history
-        priceHistory[symbol].push({
-            day: day,
-            price: asset.price
+            
+            if (wins) {
+                const winAmount = bet.amount * multiplier;
+                totalWinnings += winAmount;
+                winDetails.push(`$${bet.amount} → $${winAmount} (${multiplier}x)`);
+            }
         });
-        if (priceHistory[symbol].length > 30) {
-            priceHistory[symbol].shift();
-        }
-    }
-    
-    day++;
-    console.log(`Day ${day} completed`);
-    
-    // Update UI
-    renderMarket();
-    renderPortfolio();
-    renderChart();
-    updatePlayerStats();
-    
-    // Show notification
-    showEventPopup(
-        '📈 Market Updated',
-        'Prices have been updated for the new day!',
-        'Check your portfolio performance'
-    );
-}
-
-// ====================
-// TRADING FUNCTIONS
-// ====================
-function buy() {
-    let asset = document.getElementById('asset').value.toUpperCase().trim();
-    let amount = parseFloat(document.getElementById('amount').value);
-    
-    if (!asset || !assets[asset]) {
-        alert(`Invalid asset. Available: ${Object.keys(assets).join(', ')}`);
-        return;
-    }
-    
-    if (isNaN(amount) || amount <= 0) {
-        alert('Please enter a valid positive amount');
-        return;
-    }
-    
-    let price = assets[asset].price;
-    let cost = price * amount;
-    
-    if (cost > cash) {
-        alert(`Insufficient funds! You need $${cost.toFixed(2)} but only have $${cash.toFixed(2)}`);
-        return;
-    }
-    
-    // Execute buy
-    cash -= cost;
-    portfolio[asset].amount += amount;
-    portfolio[asset].totalCost += cost;
-    portfolio[asset].avgPrice = portfolio[asset].totalCost / portfolio[asset].amount;
-    portfolio[asset].purchaseDay = day;
-    
-    // Record transaction
-    transactions.push({
-        type: 'buy',
-        asset: asset,
-        amount: amount,
-        price: price,
-        total: cost,
-        day: day
-    });
-    
-    tradesToday++;
-    totalTrades++;
-    
-    // Add XP
-    addXP(Math.floor(cost / 100));
-    
-    // Clear input
-    document.getElementById('amount').value = '';
-    
-    // Check achievements
-    checkAchievements();
-    
-    // Update UI
-    renderMarket();
-    renderPortfolio();
-    showEventPopup(
-        '✅ Buy Order Executed',
-        `Bought ${amount} ${asset} at $${price.toFixed(2)}`,
-        `Total: $${cost.toFixed(2)}`
-    );
-}
-
-function sell() {
-    let asset = document.getElementById('asset').value.toUpperCase().trim();
-    let amount = parseFloat(document.getElementById('amount').value);
-    
-    if (!asset || !assets[asset]) {
-        alert(`Invalid asset. Available: ${Object.keys(assets).join(', ')}`);
-        return;
-    }
-    
-    if (isNaN(amount) || amount <= 0) {
-        alert('Please enter a valid positive amount');
-        return;
-    }
-    
-    if (portfolio[asset].amount < amount) {
-        alert(`Insufficient ${asset}! You have ${portfolio[asset].amount.toFixed(4)} but trying to sell ${amount}`);
-        return;
-    }
-    
-    let price = assets[asset].price;
-    let revenue = price * amount;
-    
-    // Calculate profit/loss
-    let costOfGoodsSold = (portfolio[asset].totalCost / portfolio[asset].amount) * amount;
-    let profitLoss = revenue - costOfGoodsSold;
-    
-    if (profitLoss > 0) {
-        profitableTrades++;
-        player.totalProfit += profitLoss;
-    }
-    
-    // Execute sell
-    cash += revenue;
-    portfolio[asset].amount -= amount;
-    portfolio[asset].totalCost -= costOfGoodsSold;
-    
-    if (portfolio[asset].amount === 0) {
-        portfolio[asset].avgPrice = 0;
-        portfolio[asset].purchaseDay = 0;
-    } else {
-        portfolio[asset].avgPrice = portfolio[asset].totalCost / portfolio[asset].amount;
-    }
-    
-    // Record transaction
-    transactions.push({
-        type: 'sell',
-        asset: asset,
-        amount: amount,
-        price: price,
-        total: revenue,
-        profitLoss: profitLoss,
-        day: day
-    });
-    
-    tradesToday++;
-    totalTrades++;
-    
-    // Add XP based on profit
-    if (profitLoss > 0) {
-        addXP(Math.floor(profitLoss / 50));
-    }
-    
-    // Clear input
-    document.getElementById('amount').value = '';
-    
-    // Check achievements
-    checkAchievements();
-    
-    // Update UI
-    renderMarket();
-    renderPortfolio();
-    
-    showEventPopup(
-        '✅ Sell Order Executed',
-        `Sold ${amount} ${asset} at $${price.toFixed(2)}`,
-        profitLoss >= 0 ? `Profit: +$${profitLoss.toFixed(2)}` : `Loss: -$${Math.abs(profitLoss).toFixed(2)}`
-    );
-}
-
-function nextDay() {
-    console.log('Next day button clicked');
-    updateMarket();
-}
-
-// ====================
-// RENDER FUNCTIONS
-// ====================
-function renderMarket() {
-    let marketGrid = document.getElementById('marketGrid');
-    if (!marketGrid) return;
-    
-    marketGrid.innerHTML = '';
-    
-    for (let symbol in assets) {
-        let asset = assets[symbol];
-        let changeClass = asset.change24h >= 0 ? 'positive' : 'negative';
-        let changeIcon = asset.change24h >= 0 ? 'fas fa-arrow-up' : 'fas fa-arrow-down';
         
-        marketGrid.innerHTML += `
-            <div class="crypto-card" onclick="selectAsset('${symbol}')">
-                <div class="crypto-header">
-                    <div class="crypto-name">
-                        <i class="${asset.icon}"></i> ${symbol}
-                        <small style="color: #888; font-size: 0.8em;">${asset.type === 'crypto' ? 'CRYPTO' : 'STOCK'}</small>
-                    </div>
-                    <div class="crypto-price">$${asset.price.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 8})}</div>
-                </div>
-                <div class="crypto-change ${changeClass}">
-                    <i class="${changeIcon}"></i> ${Math.abs(asset.change24h).toFixed(2)}%
-                </div>
-            </div>
-        `;
-    }
-    
-    // Render asset selector
-    let assetSelector = document.getElementById('assetSelector');
-    if (assetSelector) {
-        assetSelector.innerHTML = '';
-        let count = 0;
-        for (let symbol in assets) {
-            if (count >= 8) break;
-            let isActive = symbol === selectedAsset ? 'active' : '';
-            assetSelector.innerHTML += `
-                <button class="asset-btn ${isActive}" onclick="selectAsset('${symbol}')" style="padding: 8px; margin: 5px; background: ${symbol === selectedAsset ? '#f7931a' : '#333'}; color: white; border: none; border-radius: 5px; cursor: pointer;">
-                    ${symbol}
-                </button>
-            `;
-            count++;
+        // Update casino balance
+        casino.balance += totalWinnings;
+        if (totalWinnings > 0) {
+            casino.totalWins += totalWinnings;
+            showWinAnimation();
+        } else {
+            casino.totalLosses += rouletteState.bets.reduce((sum, bet) => sum + bet.amount, 0);
         }
-    }
-    
-    // Update datalist
-    let assetsList = document.getElementById('assetsList');
-    if (assetsList) {
-        assetsList.innerHTML = '';
-        for (let symbol in assets) {
-            assetsList.innerHTML += `<option value="${symbol}">${assets[symbol].name} (${symbol})</option>`;
-        }
-    }
-    
-    // Set selected asset in input
-    document.getElementById('asset').value = selectedAsset;
-}
-
-function renderPortfolio() {
-    let portfolioGrid = document.getElementById('portfolioGrid');
-    if (!portfolioGrid) return;
-    
-    portfolioGrid.innerHTML = '';
-    
-    let totalPortfolioValue = cash;
-    let hasHoldings = false;
-    
-    for (let symbol in portfolio) {
-        let holding = portfolio[symbol];
-        if (holding.amount > 0) {
-            hasHoldings = true;
-            let currentValue = holding.amount * assets[symbol].price;
-            totalPortfolioValue += currentValue;
-            
-            let profitLoss = currentValue - holding.totalCost;
-            let profitLossPercent = holding.totalCost > 0 ? (profitLoss / holding.totalCost * 100) : 0;
-            let plClass = profitLoss >= 0 ? 'positive' : 'negative';
-            
-            portfolioGrid.innerHTML += `
-                <div class="portfolio-item">
-                    <div style="font-weight: bold; font-size: 1.1rem; margin-bottom: 10px;">
-                        <i class="${assets[symbol].icon}"></i> ${symbol}
-                    </div>
-                    <div style="font-size: 1.2rem; font-weight: bold; margin-bottom: 10px;">
-                        $${currentValue.toLocaleString(undefined, {minimumFractionDigits: 2})}
-                    </div>
-                    <div style="color: #aaa; font-size: 0.9rem;">
-                        <div>Amount: ${holding.amount.toLocaleString(undefined, {maximumFractionDigits: 8})}</div>
-                        <div>Avg Price: $${holding.avgPrice.toFixed(2)}</div>
-                        <div>Current: $${assets[symbol].price.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 8})}</div>
-                        <div>P&L: <span class="${plClass}">${profitLoss >= 0 ? '+' : ''}$${profitLoss.toFixed(2)} (${profitLossPercent.toFixed(2)}%)</span></div>
-                    </div>
-                </div>
-            `;
-        }
-    }
-    
-    if (!hasHoldings) {
-        portfolioGrid.innerHTML = '<div style="text-align: center; color: #aaa; padding: 40px;">No holdings yet. Start trading!</div>';
-    }
-    
-    document.getElementById('totalValue').textContent = `$${totalPortfolioValue.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
-    player.highestPortfolioValue = Math.max(player.highestPortfolioValue, totalPortfolioValue);
-}
-
-// ====================
-// CHART FUNCTION - FIXED!
-// ====================
-function renderChart() {
-    console.log('Rendering chart for:', selectedAsset);
-    
-    const canvas = document.getElementById('priceChart');
-    if (!canvas) {
-        console.error('Canvas element not found!');
-        return;
-    }
-    
-    const ctx = canvas.getContext('2d');
-    if (!ctx) {
-        console.error('Could not get canvas context!');
-        return;
-    }
-    
-    // Destroy previous chart if exists
-    if (chart) {
-        chart.destroy();
-    }
-    
-    // Get price history for selected asset
-    let selectedHistory = priceHistory[selectedAsset];
-    if (!selectedHistory || selectedHistory.length === 0) {
-        console.log('No price history for', selectedAsset, '- generating default data');
-        selectedHistory = [];
-        let basePrice = assets[selectedAsset] ? assets[selectedAsset].price : 100;
-        for (let i = 0; i < 30; i++) {
-            let change = (Math.random() * 0.1) - 0.05;
-            basePrice *= (1 + change);
-            selectedHistory.push({
-                day: i + 1,
-                price: Math.round(basePrice * 100) / 100
-            });
-        }
-        priceHistory[selectedAsset] = selectedHistory;
-    }
-    
-    // Prepare data
-    const labels = selectedHistory.map(item => `Day ${item.day}`);
-    const prices = selectedHistory.map(item => item.price);
-    const asset = assets[selectedAsset];
-    
-    // Create gradient
-    const gradient = ctx.createLinearGradient(0, 0, 0, 400);
-    gradient.addColorStop(0, `${asset.color}40`);
-    gradient.addColorStop(1, `${asset.color}05`);
-    
-    // Create chart
-    chart = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: labels,
-            datasets: [{
-                label: `${selectedAsset} Price`,
-                data: prices,
-                borderColor: asset.color,
-                backgroundColor: gradient,
-                borderWidth: 3,
-                fill: true,
-                tension: 0.4,
-                pointRadius: 3,
-                pointBackgroundColor: asset.color,
-                pointBorderColor: '#fff',
-                pointBorderWidth: 1,
-                pointHoverRadius: 6
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    labels: {
-                        color: '#fff',
-                        font: {
-                            size: 14
-                        }
-                    }
-                },
-                tooltip: {
-                    backgroundColor: 'rgba(20, 20, 30, 0.9)',
-                    titleColor: '#fff',
-                    bodyColor: '#fff',
-                    borderColor: asset.color,
-                    borderWidth: 1,
-                    callbacks: {
-                        label: function(context) {
-                            return `${selectedAsset}: $${context.parsed.y.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
-                        }
-                    }
-                }
-            },
-            scales: {
-                x: {
-                    grid: {
-                        color: 'rgba(255, 255, 255, 0.1)'
-                    },
-                    ticks: {
-                        color: '#aaa'
-                    }
-                },
-                y: {
-                    grid: {
-                        color: 'rgba(255, 255, 255, 0.1)'
-                    },
-                    ticks: {
-                        color: '#aaa',
-                        callback: function(value) {
-                            return '$' + value.toLocaleString();
-                        }
-                    }
-                }
-            },
-            interaction: {
-                intersect: false,
-                mode: 'index'
-            },
-            animation: {
-                duration: 750
+        
+        // Show result
+        const resultDiv = document.getElementById('rouletteResult');
+        resultDiv.innerHTML = `
+            <h3 style="color: ${winningColor === 'red' ? '#D32F2F' : winningColor === 'black' ? '#212121' : '#388E3C'}">
+                Winning Number: ${winningNumber} ${winningColor.toUpperCase()}
+            </h3>
+            ${totalWinnings > 0 ? 
+                `<div style="color: #4CAF50; font-size: 1.5rem;">You won $${totalWinnings}!</div>` :
+                `<div style="color: #F44336;">You lost $${rouletteState.bets.reduce((sum, bet) => sum + bet.amount, 0)}</div>`
             }
+            ${winDetails.length > 0 ? `<div>${winDetails.join('<br>')}</div>` : ''}
+        `;
+        
+        updateCasinoStats();
+        rouletteState.wheelSpinning = false;
+        rouletteState.bets = [];
+        
+    }, 3000);
+}
+
+// ====================
+// BLACKJACK GAME
+// ====================
+let blackjackState = {
+    deck: [],
+    playerHand: [],
+    dealerHand: [],
+    playerScore: 0,
+    dealerScore: 0,
+    gameActive: false,
+    currentBet: 0
+};
+
+function initializeBlackjack() {
+    blackjackState = {
+        deck: [],
+        playerHand: [],
+        dealerHand: [],
+        playerScore: 0,
+        dealerScore: 0,
+        gameActive: false,
+        currentBet: 0
+    };
+    
+    // Reset UI
+    document.getElementById('dealerCards').innerHTML = '';
+    document.getElementById('playerCards').innerHTML = '';
+    document.getElementById('dealerTotal').textContent = '0';
+    document.getElementById('playerTotal').textContent = '0';
+    document.getElementById('blackjackResult').innerHTML = '';
+    
+    // Disable game buttons initially
+    document.querySelectorAll('#blackjackButtons button:not(:first-child)').forEach(btn => {
+        btn.disabled = true;
+    });
+    document.querySelector('#blackjackButtons button:first-child').disabled = false;
+}
+
+function createDeck() {
+    const suits = ['♠', '♥', '♦', '♣'];
+    const values = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+    const deck = [];
+    
+    suits.forEach(suit => {
+        values.forEach(value => {
+            deck.push({value, suit, color: suit === '♥' || suit === '♦' ? 'red' : 'black'});
+        });
+    });
+    
+    // Shuffle deck
+    for (let i = deck.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [deck[i], deck[j]] = [deck[j], deck[i]];
+    }
+    
+    return deck;
+}
+
+function getCardValue(card) {
+    if (['J', 'Q', 'K'].includes(card.value)) return 10;
+    if (card.value === 'A') return 11; // Will handle Ace as 1 later if needed
+    return parseInt(card.value);
+}
+
+function calculateScore(hand) {
+    let score = 0;
+    let aces = 0;
+    
+    hand.forEach(card => {
+        if (card.value === 'A') {
+            aces++;
+            score += 11;
+        } else {
+            score += getCardValue(card);
         }
     });
     
-    console.log('Chart rendered successfully');
-}
-
-// ====================
-// ACHIEVEMENTS
-// ====================
-function renderAchievements() {
-    let achievementsGrid = document.getElementById('achievementsGrid');
-    if (!achievementsGrid) return;
-    
-    achievementsGrid.innerHTML = '';
-    
-    for (let achievement of achievements) {
-        let unlocked = player.achievements.includes(achievement.id);
-        
-        achievementsGrid.innerHTML += `
-            <div class="achievement-card ${unlocked ? 'unlocked' : ''}">
-                <div style="font-size: 2rem; margin-bottom: 10px; color: ${unlocked ? '#f7931a' : '#666'}">
-                    <i class="${achievement.icon}"></i>
-                </div>
-                <div style="font-weight: bold; margin-bottom: 5px;">${achievement.name}</div>
-                <div style="color: #aaa; font-size: 0.9rem; margin-bottom: 10px;">${achievement.description}</div>
-                <div style="color: ${unlocked ? '#4CAF50' : '#FFD700'}; font-size: 0.8rem;">
-                    ${unlocked ? '✓ Unlocked' : `Reward: ${achievement.xp} XP + ${achievement.tokens} Tokens`}
-                </div>
-            </div>
-        `;
-    }
-}
-
-function checkAchievements() {
-    // First trade
-    if (totalTrades >= 1 && !player.achievements.includes('first_trade')) {
-        player.achievements.push('first_trade');
-        addXP(50);
-        player.tokens += 25;
-        showEventPopup(
-            '🎉 Achievement Unlocked!',
-            'First Trade',
-            '+50 XP & 25 Tokens'
-        );
+    // Handle aces
+    while (score > 21 && aces > 0) {
+        score -= 10;
+        aces--;
     }
     
-    // First profit
-    if (profitableTrades >= 1 && !player.achievements.includes('first_profit')) {
-        player.achievements.push('first_profit');
-        addXP(100);
-        player.tokens += 50;
-        showEventPopup(
-            '🎉 Achievement Unlocked!',
-            'First Profit',
-            '+100 XP & 50 Tokens'
-        );
+    return score;
+}
+
+function dealCard(hand, isDealer = false, faceDown = false) {
+    if (blackjackState.deck.length === 0) {
+        blackjackState.deck = createDeck();
     }
     
-    // Portfolio value
-    const totalValue = calculateTotalPortfolioValue();
-    if (totalValue >= 20000 && !player.achievements.includes('portfolio_20k')) {
-        player.achievements.push('portfolio_20k');
-        addXP(300);
-        player.tokens += 150;
-        showEventPopup(
-            '🎉 Achievement Unlocked!',
-            'Twenty Grand',
-            '+300 XP & 150 Tokens'
-        );
+    const card = blackjackState.deck.pop();
+    hand.push(card);
+    
+    // Update UI
+    const cardArea = isDealer ? document.getElementById('dealerCards') : document.getElementById('playerCards');
+    const cardElement = document.createElement('div');
+    
+    if (faceDown) {
+        cardElement.className = 'card card-back';
+        cardElement.textContent = '?';
+    } else {
+        cardElement.className = `card ${card.color}`;
+        cardElement.textContent = `${card.value}${card.suit}`;
     }
+    
+    cardArea.appendChild(cardElement);
+    
+    return card;
 }
 
-function calculateTotalPortfolioValue() {
-    let total = cash;
-    for (let symbol in portfolio) {
-        total += portfolio[symbol].amount * assets[symbol].price;
-    }
-    return total;
+function updateScores() {
+    blackjackState.playerScore = calculateScore(blackjackState.playerHand);
+    blackjackState.dealerScore = calculateScore(blackjackState.dealerHand.filter(card => card.faceDown !== true));
+    
+    document.getElementById('playerTotal').textContent = blackjackState.playerScore;
+    document.getElementById('dealerTotal').textContent = blackjackState.dealerScore;
 }
 
-// ====================
-// CHALLENGES
-// ====================
-function renderChallenges() {
-    let challengesList = document.getElementById('challengesList');
-    if (!challengesList) return;
-    
-    challengesList.innerHTML = '';
-    
-    for (let challenge of challenges) {
-        let completed = player.completedChallenges.includes(challenge.id);
-        
-        challengesList.innerHTML += `
-            <div class="challenge-card" style="background: rgba(30, 30, 40, 0.9); border-radius: 10px; padding: 15px; margin-bottom: 10px; border: 2px solid ${completed ? '#4CAF50' : '#333'};">
-                <div style="font-weight: bold; color: #f7931a; margin-bottom: 5px;">${challenge.name}</div>
-                <div style="color: #aaa; font-size: 0.9rem; margin-bottom: 10px;">${challenge.description}</div>
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <div style="color: ${completed ? '#4CAF50' : '#FFD700'};">
-                        ${completed ? 'Completed ✓' : 'In Progress'}
-                    </div>
-                    <div style="color: #FFD700; font-weight: bold;">
-                        ${challenge.reward.xp} XP + ${challenge.reward.tokens} Tokens
-                    </div>
-                </div>
-            </div>
-        `;
-    }
+function setBlackjackBet(amount) {
+    document.getElementById('blackjackBet').value = amount;
 }
 
-// ====================
-// UPGRADES
-// ====================
-function renderUpgrades() {
-    let upgradesGrid = document.getElementById('upgradesGrid');
-    if (!upgradesGrid) return;
+function startBlackjack() {
+    const betAmount = parseInt(document.getElementById('blackjackBet').value);
     
-    upgradesGrid.innerHTML = '';
-    
-    for (let upgrade of upgrades) {
-        let purchased = player.upgrades.includes(upgrade.id);
-        let canAfford = player.tokens >= upgrade.cost;
-        
-        upgradesGrid.innerHTML += `
-            <div class="upgrade-card" style="background: rgba(30, 30, 40, 0.9); border-radius: 10px; padding: 20px; margin-bottom: 15px; border: 2px solid ${purchased ? '#4CAF50' : canAfford ? '#00d4ff' : '#333'}; cursor: ${canAfford && !purchased ? 'pointer' : 'default'};" 
-                 onclick="${canAfford && !purchased ? `purchaseUpgrade('${upgrade.id}')` : ''}">
-                <div style="font-size: 2rem; margin-bottom: 10px; color: ${purchased ? '#4CAF50' : canAfford ? '#00d4ff' : '#666'}">
-                    <i class="${upgrade.icon}"></i>
-                </div>
-                <div style="font-weight: bold; margin-bottom: 5px;">${upgrade.name}</div>
-                <div style="color: #aaa; font-size: 0.9rem; margin-bottom: 10px;">${upgrade.description}</div>
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <div style="color: #FFD700; font-weight: bold;">
-                        ${upgrade.cost} Tokens
-                    </div>
-                    <div style="color: ${purchased ? '#4CAF50' : '#aaa'}">
-                        ${purchased ? '✓ Purchased' : (canAfford ? 'Click to Purchase' : 'Too Expensive')}
-                    </div>
-                </div>
-            </div>
-        `;
-    }
-}
-
-function purchaseUpgrade(upgradeId) {
-    const upgrade = upgrades.find(u => u.id === upgradeId);
-    if (!upgrade) return;
-    
-    if (player.tokens >= upgrade.cost && !player.upgrades.includes(upgradeId)) {
-        player.tokens -= upgrade.cost;
-        player.upgrades.push(upgradeId);
-        
-        showEventPopup(
-            '⚡ Upgrade Purchased!',
-            upgrade.name,
-            'Now active in your game!'
-        );
-        
-        renderUpgrades();
-        updatePlayerStats();
-    }
-}
-
-// ====================
-// UTILITY FUNCTIONS
-// ====================
-function selectAsset(symbol) {
-    selectedAsset = symbol;
-    document.getElementById('asset').value = symbol;
-    renderChart();
-}
-
-function addXP(amount) {
-    player.xp += amount;
-    while (player.xp >= player.xpToNextLevel) {
-        player.xp -= player.xpToNextLevel;
-        player.level++;
-        player.xpToNextLevel = Math.floor(player.xpToNextLevel * 1.5);
-        
-        // Level up reward
-        player.tokens += player.level * 50;
-        
-        showEventPopup(
-            '🌟 Level Up!',
-            `You've reached Level ${player.level}!`,
-            `Reward: ${player.level * 50} Tokens`
-        );
-    }
-    updatePlayerStats();
-}
-
-function updatePlayerStats() {
-    document.getElementById('playerLevel').textContent = player.level;
-    document.getElementById('playerXP').textContent = player.xp;
-    document.getElementById('playerTokens').textContent = player.tokens;
-    document.getElementById('playerStreak').textContent = player.dailyStreak;
-    
-    document.getElementById('levelDisplay').textContent = player.level;
-    document.getElementById('currentXP').textContent = player.xp;
-    document.getElementById('nextLevelXP').textContent = player.xpToNextLevel;
-    
-    let xpPercent = (player.xp / player.xpToNextLevel) * 100;
-    document.getElementById('xpBar').style.width = `${xpPercent}%`;
-    
-    document.getElementById('dayCounter').textContent = day;
-}
-
-function renderProfileStats() {
-    let profileStats = document.getElementById('profileStats');
-    if (!profileStats) return;
-    
-    const totalValue = calculateTotalPortfolioValue();
-    const winRate = totalTrades > 0 ? (profitableTrades / totalTrades * 100).toFixed(1) : 0;
-    
-    profileStats.innerHTML = `
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px;">
-            <div style="background: rgba(30, 30, 40, 0.9); padding: 15px; border-radius: 10px;">
-                <div style="color: #aaa; font-size: 0.9rem;">Total Trades</div>
-                <div style="color: #fff; font-size: 1.5rem; font-weight: bold;">${totalTrades}</div>
-            </div>
-            <div style="background: rgba(30, 30, 40, 0.9); padding: 15px; border-radius: 10px;">
-                <div style="color: #aaa; font-size: 0.9rem;">Win Rate</div>
-                <div style="color: #fff; font-size: 1.5rem; font-weight: bold;">${winRate}%</div>
-            </div>
-            <div style="background: rgba(30, 30, 40, 0.9); padding: 15px; border-radius: 10px;">
-                <div style="color: #aaa; font-size: 0.9rem;">Total Profit</div>
-                <div style="color: ${player.totalProfit >= 0 ? '#4CAF50' : '#F44336'}; font-size: 1.5rem; font-weight: bold;">$${player.totalProfit.toFixed(2)}</div>
-            </div>
-            <div style="background: rgba(30, 30, 40, 0.9); padding: 15px; border-radius: 10px;">
-                <div style="color: #aaa; font-size: 0.9rem;">Days Played</div>
-                <div style="color: #fff; font-size: 1.5rem; font-weight: bold;">${day - 1}</div>
-            </div>
-        </div>
-    `;
-}
-
-function renderTransactionHistory() {
-    let historyDiv = document.getElementById('transactionHistory');
-    if (!historyDiv) return;
-    
-    historyDiv.innerHTML = '';
-    
-    // Show last 10 transactions
-    const recentTransactions = transactions.slice(-10).reverse();
-    
-    if (recentTransactions.length === 0) {
-        historyDiv.innerHTML = '<div style="text-align: center; color: #aaa; padding: 40px;">No transactions yet.</div>';
+    if (isNaN(betAmount) || betAmount < casino.minBet || betAmount > casino.maxBet) {
+        alert(`Bet must be between $${casino.minBet} and $${casino.maxBet}`);
         return;
     }
     
-    for (let tx of recentTransactions) {
-        const typeClass = tx.type === 'buy' ? 'transaction-buy' : 'transaction-sell';
-        const typeIcon = tx.type === 'buy' ? 'fas fa-arrow-up' : 'fas fa-arrow-down';
-        const typeColor = tx.type === 'buy' ? '#4CAF50' : '#F44336';
+    if (betAmount > casino.balance) {
+        alert(`Insufficient casino balance! You have $${casino.balance}`);
+        return;
+    }
+    
+    // Place bet
+    casino.balance -= betAmount;
+    blackjackState.currentBet = betAmount;
+    blackjackState.gameActive = true;
+    
+    // Initialize deck and hands
+    blackjackState.deck = createDeck();
+    blackjackState.playerHand = [];
+    blackjackState.dealerHand = [];
+    
+    // Clear card areas
+    document.getElementById('dealerCards').innerHTML = '';
+    document.getElementById('playerCards').innerHTML = '';
+    document.getElementById('blackjackResult').innerHTML = '';
+    
+    // Deal initial cards
+    dealCard(blackjackState.playerHand, false);
+    dealCard(blackjackState.dealerHand, true, true); // Face down
+    dealCard(blackjackState.playerHand, false);
+    dealCard(blackjackState.dealerHand, true);
+    
+    // Update scores
+    updateScores();
+    
+    // Enable/disable buttons
+    document.querySelectorAll('#blackjackButtons button').forEach(btn => {
+        if (btn.textContent.includes('Start')) {
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-sync-alt"></i> New Game';
+            btn.onclick = () => initializeBlackjack();
+        } else {
+            btn.disabled = false;
+        }
+    });
+    
+    // Check for blackjack
+    if (blackjackState.playerScore === 21) {
+        endBlackjack('blackjack');
+    }
+    
+    updateCasinoStats();
+}
+
+function blackjackHit() {
+    if (!blackjackState.gameActive) return;
+    
+    dealCard(blackjackState.playerHand, false);
+    updateScores();
+    
+    if (blackjackState.playerScore > 21) {
+        endBlackjack('bust');
+    }
+}
+
+function blackjackStand() {
+    if (!blackjackState.gameActive) return;
+    
+    // Reveal dealer's face down card
+    const dealerCards = document.getElementById('dealerCards');
+    if (dealerCards.children.length > 0 && dealerCards.children[0].classList.contains('card-back')) {
+        dealerCards.children[0].className = `card ${blackjackState.dealerHand[0].color}`;
+        dealerCards.children[0].textContent = `${blackjackState.dealerHand[0].value}${blackjackState.dealerHand[0].suit}`;
+    }
+    
+    // Dealer draws until 17 or higher
+    while (blackjackState.dealerScore < 17) {
+        dealCard(blackjackState.dealerHand, true);
+        updateScores();
+    }
+    
+    // Determine winner
+    if (blackjackState.dealerScore > 21) {
+        endBlackjack('dealer_bust');
+    } else if (blackjackState.playerScore > blackjackState.dealerScore) {
+        endBlackjack('win');
+    } else if (blackjackState.playerScore < blackjackState.dealerScore) {
+        endBlackjack('lose');
+    } else {
+        endBlackjack('push');
+    }
+}
+
+function blackjackDouble() {
+    if (!blackjackState.gameActive) return;
+    
+    const additionalBet = blackjackState.currentBet;
+    
+    if (additionalBet > casino.balance) {
+        alert("Not enough money to double!");
+        return;
+    }
+    
+    casino.balance -= additionalBet;
+    blackjackState.currentBet *= 2;
+    
+    // Take one more card
+    dealCard(blackjackState.playerHand, false);
+    updateScores();
+    
+    // Then stand automatically
+    setTimeout(blackjackStand, 500);
+}
+
+function endBlackjack(result) {
+    blackjackState.gameActive = false;
+    
+    let winnings = 0;
+    let message = '';
+    let color = '';
+    
+    switch(result) {
+        case 'blackjack':
+            winnings = blackjackState.currentBet * 2.5; // 3:2 payout
+            message = `BLACKJACK! You win $${winnings}!`;
+            color = '#4CAF50';
+            casino.totalWins += winnings;
+            showWinAnimation();
+            break;
+        case 'win':
+            winnings = blackjackState.currentBet * 2;
+            message = `You win $${winnings}!`;
+            color = '#4CAF50';
+            casino.totalWins += winnings;
+            showWinAnimation();
+            break;
+        case 'dealer_bust':
+            winnings = blackjackState.currentBet * 2;
+            message = `Dealer busts! You win $${winnings}!`;
+            color = '#4CAF50';
+            casino.totalWins += winnings;
+            showWinAnimation();
+            break;
+        case 'lose':
+            message = `You lose $${blackjackState.currentBet}`;
+            color = '#F44336';
+            casino.totalLosses += blackjackState.currentBet;
+            break;
+        case 'bust':
+            message = `Bust! You lose $${blackjackState.currentBet}`;
+            color = '#F44336';
+            casino.totalLosses += blackjackState.currentBet;
+            break;
+        case 'push':
+            winnings = blackjackState.currentBet;
+            message = `Push! You get your $${winnings} back`;
+            color = '#FF9800';
+            break;
+    }
+    
+    casino.balance += winnings;
+    
+    document.getElementById('blackjackResult').innerHTML = `
+        <div style="color: ${color}; font-size: 1.5rem; font-weight: bold;">
+            ${message}
+        </div>
+        <div>Your score: ${blackjackState.playerScore} | Dealer score: ${blackjackState.dealerScore}</div>
+    `;
+    
+    // Disable game buttons
+    document.querySelectorAll('#blackjackButtons button:not(:first-child)').forEach(btn => {
+        btn.disabled = true;
+    });
+    
+    updateCasinoStats();
+}
+
+// ====================
+// POKER GAME (Texas Hold'em)
+// ====================
+let pokerState = {
+    deck: [],
+    playerHand: [],
+    aiHand: [],
+    communityCards: [],
+    pot: 0,
+    playerBet: 0,
+    aiBet: 0,
+    gamePhase: 'preflop', // preflop, flop, turn, river, showdown
+    gameActive: false,
+    minBet: 50,
+    maxBet: 10000
+};
+
+function initializePoker() {
+    pokerState = {
+        deck: [],
+        playerHand: [],
+        aiHand: [],
+        communityCards: [],
+        pot: 0,
+        playerBet: 0,
+        aiBet: 0,
+        gamePhase: 'preflop',
+        gameActive: false,
+        minBet: 50,
+        maxBet: 10000
+    };
+    
+    // Reset UI
+    document.getElementById('communityCards').innerHTML = '';
+    document.getElementById('playerHand').innerHTML = '';
+    document.getElementById('dealerHand').innerHTML = '';
+    document.getElementById('playerBet').textContent = '0';
+    document.getElementById('aiBet').textContent = '0';
+    document.getElementById('pokerResult').innerHTML = '';
+    
+    // Disable game buttons initially
+    document.querySelectorAll('#pokerButtons button:not(:first-child)').forEach(btn => {
+        btn.disabled = true;
+    });
+    document.querySelector('#pokerButtons button:first-child').disabled = false;
+}
+
+function createPokerDeck() {
+    const suits = ['♠', '♥', '♦', '♣'];
+    const values = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
+    const deck = [];
+    
+    suits.forEach(suit => {
+        values.forEach(value => {
+            deck.push({value, suit, color: suit === '♥' || suit === '♦' ? 'red' : 'black'});
+        });
+    });
+    
+    // Shuffle deck
+    for (let i = deck.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [deck[i], deck[j]] = [deck[j], deck[i]];
+    }
+    
+    return deck;
+}
+
+function dealPokerCard(faceDown = false) {
+    if (pokerState.deck.length === 0) {
+        pokerState.deck = createPokerDeck();
+    }
+    
+    const card = pokerState.deck.pop();
+    
+    // Create card element
+    const cardElement = document.createElement('div');
+    if (faceDown) {
+        cardElement.className = 'card card-back';
+        cardElement.textContent = '?';
+    } else {
+        cardElement.className = `card ${card.color}`;
+        cardElement.textContent = `${card.value}${card.suit}`;
+    }
+    
+    return {card, element: cardElement};
+}
+
+function startPoker() {
+    const minBet = pokerState.minBet * 2; // Big blind + small blind
+    
+    if (casino.balance < minBet) {
+        alert(`You need at least $${minBet} to play (blinds are $${pokerState.minBet}/$${pokerState.minBet * 2})`);
+        return;
+    }
+    
+    // Post blinds
+    casino.balance -= minBet;
+    pokerState.playerBet = minBet;
+    pokerState.pot = minBet;
+    pokerState.gameActive = true;
+    
+    // Initialize deck
+    pokerState.deck = createPokerDeck();
+    pokerState.playerHand = [];
+    pokerState.aiHand = [];
+    pokerState.communityCards = [];
+    
+    // Clear UI
+    document.getElementById('communityCards').innerHTML = '';
+    document.getElementById('playerHand').innerHTML = '';
+    document.getElementById('dealerHand').innerHTML = '';
+    document.getElementById('pokerResult').innerHTML = '';
+    
+    // Deal hands
+    const playerHandArea = document.getElementById('playerHand');
+    const aiHandArea = document.getElementById('dealerHand');
+    
+    for (let i = 0; i < 2; i++) {
+        // Player cards (face up)
+        const playerCard = dealPokerCard(false);
+        pokerState.playerHand.push(playerCard.card);
+        playerHandArea.appendChild(playerCard.element);
         
-        historyDiv.innerHTML += `
-            <div class="${typeClass}" style="background: rgba(30, 30, 40, 0.7); border-radius: 8px; padding: 10px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; border-left: 4px solid ${typeColor};">
-                <div>
-                    <i class="${typeIcon}" style="color: ${typeColor};"></i>
-                    <strong>${tx.type.toUpperCase()}</strong> ${tx.amount} ${tx.asset}
-                </div>
-                <div>
-                    $${tx.price.toFixed(2)}
-                </div>
-                <div style="font-size: 0.9rem; color: #aaa;">
-                    Day ${tx.day}
-                </div>
-            </div>
-        `;
+        // AI cards (face down)
+        const aiCard = dealPokerCard(true);
+        pokerState.aiHand.push(aiCard.card);
+        aiHandArea.appendChild(aiCard.element);
+    }
+    
+    // Update UI
+    document.getElementById('playerBet').textContent = pokerState.playerBet;
+    document.getElementById('aiBet').textContent = '0';
+    
+    // Enable game buttons
+    document.querySelectorAll('#pokerButtons button').forEach(btn => {
+        btn.disabled = false;
+    });
+    
+    updateCasinoStats();
+}
+
+function addPokerChip(amount) {
+    if (!pokerState.gameActive) return;
+    
+    const currentBet = parseInt(document.getElementById('playerBet').textContent);
+    const newBet = currentBet + amount;
+    
+    if (newBet > casino.balance) {
+        alert("Not enough money!");
+        return;
+    }
+    
+    pokerState.playerBet = newBet;
+    document.getElementById('playerBet').textContent = newBet;
+}
+
+function pokerCall() {
+    if (!pokerState.gameActive) return;
+    
+    const callAmount = pokerState.aiBet - pokerState.playerBet;
+    
+    if (callAmount > 0) {
+        if (callAmount > casino.balance) {
+            alert("Not enough money to call!");
+            return;
+        }
+        
+        casino.balance -= callAmount;
+        pokerState.playerBet += callAmount;
+        pokerState.pot += callAmount;
+    }
+    
+    advancePokerGame();
+}
+
+function pokerRaise() {
+    if (!pokerState.gameActive) return;
+    
+    const raiseAmount = pokerState.playerBet;
+    
+    if (raiseAmount > casino.balance) {
+        alert("Not enough money to raise!");
+        return;
+    }
+    
+    casino.balance -= raiseAmount;
+    pokerState.pot += raiseAmount;
+    
+    // AI decision
+    const aiDecision = Math.random();
+    if (aiDecision > 0.3) { // 70% chance AI calls
+        pokerState.aiBet = pokerState.playerBet;
+        pokerState.pot += raiseAmount;
+    } else { // 30% chance AI folds
+        endPokerGame('ai_fold');
+        return;
+    }
+    
+    document.getElementById('aiBet').textContent = pokerState.aiBet;
+    advancePokerGame();
+}
+
+function pokerFold() {
+    if (!pokerState.gameActive) return;
+    
+    endPokerGame('player_fold');
+}
+
+function advancePokerGame() {
+    switch(pokerState.gamePhase) {
+        case 'preflop':
+            // Deal flop (3 community cards)
+            pokerState.gamePhase = 'flop';
+            dealCommunityCards(3);
+            break;
+        case 'flop':
+            // Deal turn (1 community card)
+            pokerState.gamePhase = 'turn';
+            dealCommunityCards(1);
+            break;
+        case 'turn':
+            // Deal river (1 community card)
+            pokerState.gamePhase = 'river';
+            dealCommunityCards(1);
+            break;
+        case 'river':
+            // Showdown
+            pokerState.gamePhase = 'showdown';
+            showdown();
+            break;
+    }
+    
+    // AI makes a bet
+    if (pokerState.gamePhase !== 'showdown') {
+        makeAIBet();
     }
 }
 
-function renderNewsTicker() {
-    let newsContent = document.getElementById('newsContent');
-    if (!newsContent) return;
+function dealCommunityCards(count) {
+    const communityArea = document.getElementById('communityCards');
     
-    newsContent.innerHTML = '';
+    for (let i = 0; i < count; i++) {
+        const card = dealPokerCard(false);
+        pokerState.communityCards.push(card.card);
+        communityArea.appendChild(card.element);
+    }
+}
+
+function makeAIBet() {
+    const aiDecision = Math.random();
+    const betAmount = Math.floor(Math.random() * 500) + 100; // $100-$600
     
-    // Shuffle and pick 5 news items
-    let shuffledNews = [...newsHeadlines].sort(() => 0.5 - Math.random()).slice(0, 5);
+    if (aiDecision > 0.6 && betAmount <= casino.balance * 0.1) { // 40% chance to bet
+        pokerState.aiBet = betAmount;
+        pokerState.pot += betAmount;
+        document.getElementById('aiBet').textContent = betAmount;
+    }
+}
+
+function showdown() {
+    // Reveal AI cards
+    const aiCards = document.querySelectorAll('#dealerHand .card-back');
+    aiCards.forEach((card, index) => {
+        const aiCard = pokerState.aiHand[index];
+        card.className = `card ${aiCard.color}`;
+        card.textContent = `${aiCard.value}${aiCard.suit}`;
+    });
     
-    for (let headline of shuffledNews) {
-        newsContent.innerHTML += `
-            <div class="news-item">
-                <i class="fas fa-newspaper"></i> ${headline}
-            </div>
-        `;
+    // Evaluate hands
+    const playerScore = evaluatePokerHand([...pokerState.playerHand, ...pokerState.communityCards]);
+    const aiScore = evaluatePokerHand([...pokerState.aiHand, ...pokerState.communityCards]);
+    
+    // Determine winner
+    if (playerScore > aiScore) {
+        endPokerGame('win');
+    } else if (playerScore < aiScore) {
+        endPokerGame('lose');
+    } else {
+        endPokerGame('split');
+    }
+}
+
+function evaluatePokerHand(cards) {
+    // Simplified hand evaluation (returns a numeric score)
+    // In a real game, you'd use proper poker hand ranking
+    let score = 0;
+    
+    // Count pairs, three of a kind, etc.
+    const valueCounts = {};
+    cards.forEach(card => {
+        valueCounts[card.value] = (valueCounts[card.value] || 0) + 1;
+    });
+    
+    // Check for pairs, three of a kind, four of a kind
+    Object.values(valueCounts).forEach(count => {
+        if (count === 2) score += 10; // Pair
+        if (count === 3) score += 30; // Three of a kind
+        if (count === 4) score += 80; // Four of a kind
+    });
+    
+    // Add random element for simulation
+    score += Math.floor(Math.random() * 20);
+    
+    return score;
+}
+
+function endPokerGame(result) {
+    pokerState.gameActive = false;
+    
+    let winnings = 0;
+    let message = '';
+    let color = '';
+    
+    switch(result) {
+        case 'win':
+            winnings = pokerState.pot;
+            message = `You win $${winnings}!`;
+            color = '#4CAF50';
+            casino.totalWins += winnings;
+            showWinAnimation();
+            break;
+        case 'lose':
+            message = `You lose! Pot: $${pokerState.pot}`;
+            color = '#F44336';
+            casino.totalLosses += pokerState.playerBet;
+            break;
+        case 'player_fold':
+            winnings = pokerState.pot - pokerState.playerBet;
+            message = `You fold. Lost $${pokerState.playerBet}`;
+            color = '#F44336';
+            casino.totalLosses += pokerState.playerBet;
+            break;
+        case 'ai_fold':
+            winnings = pokerState.pot;
+            message = `AI folds! You win $${winnings}!`;
+            color = '#4CAF50';
+            casino.totalWins += winnings;
+            showWinAnimation();
+            break;
+        case 'split':
+            winnings = pokerState.pot / 2;
+            message = `Split pot! You get $${winnings}`;
+            color = '#FF9800';
+            break;
     }
     
-    // Duplicate for seamless loop
-    newsContent.innerHTML += newsContent.innerHTML;
-}
-
-function showEventPopup(title, description, reward) {
-    document.getElementById('eventTitle').textContent = title;
-    document.getElementById('eventDescription').textContent = description;
-    document.getElementById('eventReward').textContent = reward;
-    document.getElementById('gameEventPopup').style.display = 'block';
-}
-
-function closeEventPopup() {
-    document.getElementById('gameEventPopup').style.display = 'none';
+    casino.balance += winnings;
+    
+    document.getElementById('pokerResult').innerHTML = `
+        <div style="color: ${color}; font-size: 1.5rem; font-weight: bold;">
+            ${message}
+        </div>
+        <div>Pot: $${pokerState.pot}</div>
+    `;
+    
+    // Disable game buttons
+    document.querySelectorAll('#pokerButtons button:not(:first-child)').forEach(btn => {
+        btn.disabled = true;
+    });
+    
+    updateCasinoStats();
 }
 
 // ====================
-// INITIALIZATION
+// WIN ANIMATION
 // ====================
+function showWinAnimation() {
+    const animation = document.getElementById('winAnimation');
+    animation.style.display = 'block';
+    
+    // Random emoji
+    const emojis = ['🎉', '💰', '🎰', '🤑', '💎', '👑', '⭐', '🏆'];
+    animation.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+    
+    setTimeout(() => {
+        animation.style.display = 'none';
+    }, 2000);
+}
+
+// ====================
+// INITIALIZATION UPDATE
+// ====================
+// Update your existing init function to include casino initialization
 function init() {
     console.log('Initializing game...');
     
@@ -1057,6 +1129,23 @@ function init() {
         }
     });
     
+    // Add Transfer to Casino button to header
+    const headerContainer = document.querySelector('.header-container');
+    const transferButton = document.createElement('button');
+    transferButton.innerHTML = '<i class="fas fa-exchange-alt"></i> Transfer to Casino';
+    transferButton.style.cssText = `
+        background: linear-gradient(135deg, #9C27B0, #673AB7);
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: bold;
+        margin-left: 10px;
+    `;
+    transferButton.onclick = transferToCasino;
+    document.querySelector('.player-stats').appendChild(transferButton);
+    
     // Initial render
     renderMarket();
     renderPortfolio();
@@ -1078,6 +1167,3 @@ function init() {
     
     console.log('Game initialized successfully');
 }
-
-// Start the game when page loads
-window.onload = init;
