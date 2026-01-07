@@ -18,7 +18,7 @@ let cryptocurrencies = {
         change7d: 0,
         marketCap: 620000000000,
         volume24h: 15000000000,
-        volatility: 0.08, // Higher volatility for crypto
+        volatility: 0.08,
         icon: "fab fa-bitcoin",
         color: "#F7931A"
     },
@@ -73,7 +73,7 @@ let cryptocurrencies = {
         change7d: 0,
         marketCap: 10000000000,
         volume24h: 400000000,
-        volatility: 0.15, // Doge is more volatile
+        volatility: 0.15,
         icon: "fas fa-dog",
         color: "#C2A633"
     },
@@ -150,8 +150,8 @@ function initializePriceHistory() {
             });
         }
         // Set current price as last historical price
-        cryptocurrencies[symbol].price = basePrice;
-        previousPrices[symbol] = basePrice;
+        cryptocurrencies[symbol].price = Math.round(basePrice * 100) / 100;
+        previousPrices[symbol] = cryptocurrencies[symbol].price;
     }
 }
 
@@ -177,7 +177,6 @@ function updateMarket() {
         previousPrices[symbol] = previousPrice;
         
         // Simulate more realistic crypto price movements
-        // Crypto prices can have sudden spikes and dips
         let randomFactor = Math.random();
         let change;
         
@@ -382,17 +381,39 @@ function renderNewsTicker() {
     newsContent.innerHTML += newsContent.innerHTML;
 }
 
-// Render price chart
+// Render price chart - FIXED VERSION
 function renderChart() {
-    let ctx = document.getElementById('priceChart').getContext('2d');
+    let canvas = document.getElementById('priceChart');
+    if (!canvas) {
+        console.error('Canvas element not found!');
+        return;
+    }
     
+    let ctx = canvas.getContext('2d');
+    if (!ctx) {
+        console.error('Could not get canvas context!');
+        return;
+    }
+    
+    // Destroy previous chart if exists
     if (chart) {
         chart.destroy();
     }
     
     let selectedHistory = priceHistory[selectedAsset];
+    if (!selectedHistory || selectedHistory.length === 0) {
+        console.log('No price history for', selectedAsset);
+        // Initialize with default data
+        selectedHistory = [{ day: 1, price: cryptocurrencies[selectedAsset].price }];
+    }
+    
     let labels = selectedHistory.map(item => `Day ${item.day}`);
     let prices = selectedHistory.map(item => item.price);
+    
+    // Create gradient for chart
+    let gradient = ctx.createLinearGradient(0, 0, 0, 300);
+    gradient.addColorStop(0, `${cryptocurrencies[selectedAsset].color}40`);
+    gradient.addColorStop(1, `${cryptocurrencies[selectedAsset].color}00`);
     
     chart = new Chart(ctx, {
         type: 'line',
@@ -402,41 +423,97 @@ function renderChart() {
                 label: `${selectedAsset} Price`,
                 data: prices,
                 borderColor: cryptocurrencies[selectedAsset].color,
-                backgroundColor: `${cryptocurrencies[selectedAsset].color}20`,
-                borderWidth: 2,
+                backgroundColor: gradient,
+                borderWidth: 3,
                 fill: true,
-                tension: 0.4
+                tension: 0.2,
+                pointRadius: 2,
+                pointBackgroundColor: cryptocurrencies[selectedAsset].color,
+                pointBorderColor: '#fff',
+                pointBorderWidth: 1
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            animation: {
+                duration: 750,
+                easing: 'easeInOutQuart'
+            },
             plugins: {
                 legend: {
+                    display: true,
                     labels: {
-                        color: '#fff'
+                        color: '#fff',
+                        font: {
+                            size: 14,
+                            family: 'Arial'
+                        }
+                    }
+                },
+                tooltip: {
+                    mode: 'index',
+                    intersect: false,
+                    backgroundColor: 'rgba(20, 20, 30, 0.9)',
+                    titleColor: '#fff',
+                    bodyColor: '#fff',
+                    borderColor: cryptocurrencies[selectedAsset].color,
+                    borderWidth: 1,
+                    callbacks: {
+                        label: function(context) {
+                            return `${selectedAsset}: $${context.parsed.y.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
+                        }
                     }
                 }
             },
             scales: {
                 x: {
                     grid: {
-                        color: '#333'
+                        color: 'rgba(255, 255, 255, 0.1)',
+                        borderColor: 'rgba(255, 255, 255, 0.1)'
                     },
                     ticks: {
-                        color: '#aaa'
+                        color: '#aaa',
+                        font: {
+                            size: 12
+                        }
+                    },
+                    title: {
+                        display: true,
+                        text: 'Day',
+                        color: '#aaa',
+                        font: {
+                            size: 14
+                        }
                     }
                 },
                 y: {
                     grid: {
-                        color: '#333'
+                        color: 'rgba(255, 255, 255, 0.1)',
+                        borderColor: 'rgba(255, 255, 255, 0.1)'
                     },
                     ticks: {
                         color: '#aaa',
+                        font: {
+                            size: 12
+                        },
                         callback: function(value) {
                             return '$' + value.toLocaleString();
                         }
+                    },
+                    title: {
+                        display: true,
+                        text: 'Price (USD)',
+                        color: '#aaa',
+                        font: {
+                            size: 14
+                        }
                     }
+                }
+            },
+            elements: {
+                line: {
+                    tension: 0.2
                 }
             }
         }
@@ -583,8 +660,6 @@ function buy() {
     tradesToday++;
     totalTrades++;
     
-    // Check if this becomes a profitable trade (we'll check when selling)
-    
     // Clear inputs
     document.getElementById('amount').value = '';
     document.getElementById('limitPrice').value = '';
@@ -684,8 +759,11 @@ function toggleLimitPrice() {
 
 // Initialize the application
 function init() {
-    initializePriceHistory();
+    // Generate wallet address
     document.getElementById('walletAddress').textContent = generateWalletAddress();
+    
+    // Initialize price history
+    initializePriceHistory();
     
     // Set up event listeners
     document.getElementById('orderType').addEventListener('change', toggleLimitPrice);
@@ -712,8 +790,10 @@ function init() {
         }
     });
     
-    // Initial render
-    render();
+    // Initial render - wait a bit to ensure DOM is fully loaded
+    setTimeout(() => {
+        render();
+    }, 100);
 }
 
 // Start the simulation when page loads
