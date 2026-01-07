@@ -1,20 +1,7 @@
 // ====================
-// GAME CONFIGURATION
-// ====================
-const CONFIG = {
-    INITIAL_CASH: 10000,
-    MAX_ASSETS: 25,
-    CHART_HISTORY_DAYS: 30,
-    DAILY_BONUS_BASE: 100,
-    LEVEL_MULTIPLIER: 1.5,
-    SOUND_ENABLED: true,
-    VIBRATION_ENABLED: true
-};
-
-// ====================
 // GAME STATE
 // ====================
-let cash = CONFIG.INITIAL_CASH;
+let cash = 10000;
 let day = 1;
 let tradesToday = 0;
 let totalTrades = 0;
@@ -23,9 +10,6 @@ let selectedAsset = "BTC";
 let priceHistory = {};
 let chart = null;
 let previousPrices = {};
-let confetti = null;
-let soundEnabled = CONFIG.SOUND_ENABLED;
-let lastPriceAnimations = {};
 
 // Player progression
 let player = {
@@ -35,779 +19,346 @@ let player = {
     tokens: 100,
     dailyStreak: 1,
     lastPlayed: new Date().toDateString(),
-    lastBonusClaim: null,
     achievements: [],
     completedChallenges: [],
-    activeChallenges: [],
     upgrades: [],
     totalProfit: 0,
-    highestPortfolioValue: CONFIG.INITIAL_CASH,
-    totalVolume: 0,
-    favoriteAsset: "BTC",
-    playTime: 0,
-    highestWinStreak: 0
+    highestPortfolioValue: 10000
 };
 
-// Current session stats
-let sessionStats = {
-    startTime: Date.now(),
-    trades: 0,
-    profit: 0,
-    winStreak: 0,
-    currentWinStreak: 0
-};
+// Transaction history
+let transactions = [];
 
 // ====================
-// SOUND SYSTEM
-// ====================
-const SoundSystem = {
-    sounds: {
-        buy: new Audio('https://assets.mixkit.co/sfx/preview/mixkit-unlock-game-notification-253.mp3'),
-        sell: new Audio('https://assets.mixkit.co/sfx/preview/mixkit-winning-chimes-2015.mp3'),
-        levelUp: new Audio('https://assets.mixkit.co/sfx/preview/mixkit-winning-chimes-2015.mp3'),
-        achievement: new Audio('https://assets.mixkit.co/sfx/preview/mixkit-achievement-bell-600.mp3'),
-        bonus: new Audio('https://assets.mixkit.co/sfx/preview/mixkit-bonus-earned-aliens-2023.mp3'),
-        error: new Audio('https://assets.mixkit.co/sfx/preview/mixkit-wrong-answer-fail-notification-946.mp3'),
-        priceUp: new Audio('https://assets.mixkit.co/sfx/preview/mixkit-correct-answer-tone-2870.mp3'),
-        priceDown: new Audio('https://assets.mixkit.co/sfx/preview/mixkit-wrong-answer-bass-buzzer-948.mp3')
-    },
-    
-    init() {
-        // Set volume for all sounds
-        Object.values(this.sounds).forEach(sound => {
-            sound.volume = 0.3;
-            sound.preload = 'auto';
-        });
-    },
-    
-    play(soundName) {
-        if (!soundEnabled) return;
-        
-        const sound = this.sounds[soundName];
-        if (sound) {
-            sound.currentTime = 0;
-            sound.play().catch(() => {
-                // Ignore autoplay restrictions
-            });
-        }
-    }
-};
-
-// ====================
-// PARTICLE SYSTEM
-// ====================
-const ParticleSystem = {
-    particles: [],
-    
-    create(type, x, y, count = 20) {
-        const colors = {
-            coin: ['#FFD700', '#FFA500', '#FFEE58'],
-            xp: ['#00D4FF', '#2196F3', '#03A9F4'],
-            token: ['#F7931A', '#FF9800', '#FF5722'],
-            level: ['#9C27B0', '#673AB7', '#E91E63']
-        };
-        
-        for (let i = 0; i < count; i++) {
-            const particle = {
-                x,
-                y,
-                size: Math.random() * 20 + 5,
-                speedX: Math.random() * 6 - 3,
-                speedY: Math.random() * 6 - 3,
-                color: colors[type][Math.floor(Math.random() * colors[type].length)],
-                life: 100,
-                type
-            };
-            this.particles.push(particle);
-        }
-    },
-    
-    update() {
-        const container = document.getElementById('particles');
-        if (!container) return;
-        
-        container.innerHTML = '';
-        
-        for (let i = this.particles.length - 1; i >= 0; i--) {
-            const p = this.particles[i];
-            
-            p.x += p.speedX;
-            p.y += p.speedY;
-            p.life -= 2;
-            
-            if (p.life <= 0) {
-                this.particles.splice(i, 1);
-                continue;
-            }
-            
-            const opacity = p.life / 100;
-            const element = document.createElement('div');
-            element.style.cssText = `
-                position: absolute;
-                left: ${p.x}px;
-                top: ${p.y}px;
-                width: ${p.size}px;
-                height: ${p.size}px;
-                background: ${p.color};
-                border-radius: 50%;
-                opacity: ${opacity};
-                pointer-events: none;
-            `;
-            container.appendChild(element);
-        }
-        
-        requestAnimationFrame(() => this.update());
-    }
-};
-
-// ====================
-// CONFETTI SYSTEM
-// ====================
-function launchConfetti() {
-    if (!confetti) {
-        confetti = new ConfettiGenerator({
-            target: 'particles',
-            max: 150,
-            size: 1.2,
-            animate: true,
-            props: ['circle', 'square', 'triangle', 'line'],
-            colors: [[255, 215, 0], [247, 147, 26], [0, 212, 255], [76, 175, 80], [156, 39, 176]],
-            clock: 40
-        });
-        confetti.render();
-    } else {
-        confetti.clear();
-        setTimeout(() => confetti.render(), 10);
-    }
-}
-
-// ====================
-// ADDICTIVE FEATURES
-// ====================
-
-// 1. DAILY BONUS SYSTEM
-function checkDailyBonus() {
-    const today = new Date().toDateString();
-    if (player.lastBonusClaim !== today) {
-        document.getElementById('dailyBonusBtn').style.display = 'flex';
-    }
-}
-
-function claimDailyBonus() {
-    const bonusMultiplier = Math.min(player.dailyStreak, 10);
-    const xpBonus = CONFIG.DAILY_BONUS_BASE * bonusMultiplier;
-    const tokenBonus = 50 * bonusMultiplier;
-    
-    addXP(xpBonus);
-    player.tokens += tokenBonus;
-    player.lastBonusClaim = new Date().toDateString();
-    
-    // Show floating coins
-    showFloatingCoins(50);
-    
-    // Launch confetti
-    launchConfetti();
-    
-    // Play sound
-    SoundSystem.play('bonus');
-    
-    // Show event
-    showEventPopup(
-        '🎁 DAILY BONUS! 🎁',
-        `Day ${player.dailyStreak} streak bonus!`,
-        `+${xpBonus} XP & +${tokenBonus} Tokens`
-    );
-    
-    document.getElementById('dailyBonusBtn').style.display = 'none';
-}
-
-// 2. PRICE CHANGE ANIMATIONS
-function animatePriceChange(symbol, change) {
-    const element = document.querySelector(`[data-symbol="${symbol}"] .asset-price`);
-    if (!element) return;
-    
-    element.classList.remove('price-up', 'price-down');
-    
-    setTimeout(() => {
-        if (change > 0) {
-            element.classList.add('price-up');
-            SoundSystem.play('priceUp');
-        } else if (change < 0) {
-            element.classList.add('price-down');
-            SoundSystem.play('priceDown');
-        }
-        
-        // Create particles
-        const rect = element.getBoundingClientRect();
-        ParticleSystem.create('coin', rect.left + rect.width / 2, rect.top);
-    }, 100);
-}
-
-// 3. WIN STREAK BONUSES
-function updateWinStreak(isProfitable) {
-    if (isProfitable) {
-        sessionStats.currentWinStreak++;
-        sessionStats.winStreak = Math.max(sessionStats.winStreak, sessionStats.currentWinStreak);
-        player.highestWinStreak = Math.max(player.highestWinStreak, sessionStats.currentWinStreak);
-        
-        // Streak bonuses
-        if (sessionStats.currentWinStreak >= 3) {
-            const streakBonus = Math.floor(sessionStats.currentWinStreak / 3) * 10;
-            addXP(streakBonus);
-            player.tokens += streakBonus;
-            
-            if (sessionStats.currentWinStreak % 3 === 0) {
-                showEventPopup(
-                    '🔥 WIN STREAK! 🔥',
-                    `${sessionStats.currentWinStreak} profitable trades in a row!`,
-                    `+${streakBonus} XP & Tokens`
-                );
-            }
-        }
-    } else {
-        sessionStats.currentWinStreak = 0;
-    }
-}
-
-// 4. LEVEL UP CELEBRATION
-function showLevelUpAnimation() {
-    const anim = document.getElementById('levelUpAnimation');
-    anim.style.display = 'block';
-    
-    SoundSystem.play('levelUp');
-    launchConfetti();
-    
-    setTimeout(() => {
-        anim.style.display = 'none';
-    }, 2000);
-}
-
-// 5. FLOATING COINS EFFECT
-function showFloatingCoins(count = 20) {
-    const container = document.getElementById('floatingCoins');
-    container.style.display = 'block';
-    container.innerHTML = '';
-    
-    for (let i = 0; i < count; i++) {
-        const coin = document.createElement('div');
-        coin.className = 'coin';
-        coin.innerHTML = '<i class="fas fa-coins"></i>';
-        coin.style.left = `${Math.random() * 100}vw`;
-        coin.style.animationDelay = `${Math.random() * 0.5}s`;
-        coin.style.color = i % 3 === 0 ? '#FFD700' : i % 3 === 1 ? '#F7931A' : '#FF9800';
-        
-        container.appendChild(coin);
-    }
-    
-    setTimeout(() => {
-        container.style.display = 'none';
-    }, 2000);
-}
-
-// ====================
-// ENHANCED ASSETS DATA
+// ASSETS DATA
 // ====================
 let assets = {
-    // Cryptocurrencies
     BTC: {
         name: "Bitcoin",
-        price: 45000,
+        price: 32000,
         change24h: 0,
-        marketCap: 880000000000,
-        volume24h: 25000000000,
+        marketCap: 620000000000,
+        volume24h: 15000000000,
         volatility: 0.08,
         icon: "fab fa-bitcoin",
         color: "#F7931A",
-        type: "crypto",
-        trend: "bullish",
-        popularity: 95
+        type: "crypto"
     },
     ETH: {
         name: "Ethereum",
-        price: 3200,
+        price: 2100,
         change24h: 0,
-        marketCap: 385000000000,
-        volume24h: 15000000000,
+        marketCap: 250000000000,
+        volume24h: 8000000000,
         volatility: 0.09,
         icon: "fab fa-ethereum",
         color: "#627EEA",
-        type: "crypto",
-        trend: "bullish",
-        popularity: 90
+        type: "crypto"
     },
     SOL: {
         name: "Solana",
-        price: 120,
+        price: 42.50,
         change24h: 0,
-        marketCap: 52000000000,
-        volume24h: 3500000000,
-        volatility: 0.15,
+        marketCap: 17000000000,
+        volume24h: 600000000,
+        volatility: 0.12,
         icon: "fas fa-fire",
         color: "#00FFA3",
-        type: "crypto",
-        trend: "volatile",
-        popularity: 85
+        type: "crypto"
     },
     DOGE: {
         name: "Dogecoin",
-        price: 0.15,
+        price: 0.075,
         change24h: 0,
-        marketCap: 21000000000,
-        volume24h: 1200000000,
-        volatility: 0.25,
+        marketCap: 10000000000,
+        volume24h: 400000000,
+        volatility: 0.15,
         icon: "fas fa-dog",
         color: "#C2A633",
-        type: "crypto",
-        trend: "meme",
-        popularity: 80
+        type: "crypto"
     },
-    ADA: {
-        name: "Cardano",
-        price: 0.55,
-        change24h: 0,
-        marketCap: 19500000000,
-        volume24h: 450000000,
-        volatility: 0.12,
-        icon: "fas fa-chart-line",
-        color: "#0033AD",
-        type: "crypto",
-        trend: "stable",
-        popularity: 75
-    },
-    XRP: {
-        name: "Ripple",
-        price: 0.75,
-        change24h: 0,
-        marketCap: 40000000000,
-        volume24h: 2000000000,
-        volatility: 0.10,
-        icon: "fas fa-bolt",
-        color: "#23292F",
-        type: "crypto",
-        trend: "legal",
-        popularity: 70
-    },
-    
-    // Stocks
     AAPL: {
-        name: "Apple",
-        price: 185,
+        name: "Apple Inc.",
+        price: 175.25,
         change24h: 0,
-        marketCap: 2900000000000,
-        volume24h: 60000000,
-        volatility: 0.03,
-        icon: "fab fa-apple",
+        marketCap: 2750000000000,
+        volume24h: 75000000,
+        volatility: 0.02,
+        icon: "fas fa-apple-alt",
         color: "#A2AAAD",
-        type: "stock",
-        trend: "growth",
-        popularity: 95
+        type: "stock"
     },
     TSLA: {
         name: "Tesla",
-        price: 250,
+        price: 240.00,
         change24h: 0,
-        marketCap: 800000000000,
-        volume24h: 100000000,
-        volatility: 0.06,
+        marketCap: 760000000000,
+        volume24h: 120000000,
+        volatility: 0.05,
         icon: "fas fa-car",
         color: "#CC0000",
-        type: "stock",
-        trend: "volatile",
-        popularity: 85
+        type: "stock"
     },
     NVDA: {
         name: "NVIDIA",
-        price: 650,
+        price: 450.00,
         change24h: 0,
-        marketCap: 1600000000000,
-        volume24h: 50000000,
-        volatility: 0.05,
+        marketCap: 1110000000000,
+        volume24h: 45000000,
+        volatility: 0.04,
         icon: "fas fa-microchip",
         color: "#76B900",
-        type: "stock",
-        trend: "bullish",
-        popularity: 90
+        type: "stock"
     },
     MSFT: {
         name: "Microsoft",
-        price: 420,
+        price: 330.50,
         change24h: 0,
-        marketCap: 3120000000000,
+        marketCap: 2460000000000,
         volume24h: 25000000,
         volatility: 0.02,
         icon: "fab fa-windows",
-        color: "#00A4EF",
-        type: "stock",
-        trend: "stable",
-        popularity: 88
-    },
-    GME: {
-        name: "GameStop",
-        price: 18.50,
-        change24h: 0,
-        marketCap: 5700000000,
-        volume24h: 30000000,
-        volatility: 0.20,
-        icon: "fas fa-gamepad",
-        color: "#FF0000",
-        type: "stock",
-        trend: "meme",
-        popularity: 75
+        color: "#F25022",
+        type: "stock"
     }
 };
 
-// ====================
-// PORTFOLIO INIT
-// ====================
+// Initialize portfolio
 let portfolio = {};
 for (let symbol in assets) {
     portfolio[symbol] = { amount: 0, avgPrice: 0, totalCost: 0, purchaseDay: 0 };
 }
 
-// ====================
-// TRANSACTIONS
-// ====================
-let transactions = [];
-
-// ====================
-// ENHANCED NEWS
-// ====================
+// News headlines
 const newsHeadlines = [
-    "🚀 BITCOIN HITS $50K: Institutional adoption reaches new highs!",
-    "📈 TESLA ANNOUNCES BITCOIN PAYMENTS: Elon Musk confirms integration",
-    "💎 DIAMOND HANDS: Retail investors hold strong through volatility",
-    "🌙 ALT SEASON INCOMING: Analysts predict major altcoin rallies",
-    "🏦 FED ANNOUNCES RATE DECISION: Markets react positively",
-    "🦍 APES TOGETHER STRONG: Meme stocks surge on social sentiment",
-    "🔮 CRYPTO PREDICTIONS 2024: Experts share bullish forecasts",
-    "⚡ LIGHTNING NETWORK GROWS: Bitcoin scalability reaches new milestones",
-    "🎮 GAMEFI EXPLOSION: Play-to-earn games dominate crypto space",
-    "🌍 GREEN MINING INITIATIVE: Major miners switch to renewable energy",
-    "🤖 AI TRADING BOTS: Automated systems outperform human traders",
-    "🎯 SHORT SQUEEZE ALERT: Heavy short positions in popular stocks",
-    "💰 MICROSTRATEGY BUYS MORE BITCOIN: Corporate treasury strategy expands",
-    "📊 STOCK SPLIT ANNOUNCEMENTS: Major tech companies announce splits",
-    "🌊 MARKET SENTIMENT TURNS BULLISH: Fear & Greed Index hits extreme greed"
+    "Bitcoin ETF approval expected this quarter",
+    "Ethereum completes Shanghai upgrade successfully",
+    "Major bank announces crypto custody services",
+    "Tech stocks rally on strong earnings reports",
+    "Crypto market shows signs of recovery",
+    "Regulatory clarity boosts market confidence"
 ];
 
-// ====================
-// ACHIEVEMENTS (ENHANCED)
-// ====================
+// Achievements
 const achievements = [
     {
         id: 'first_trade',
-        name: 'Baby Steps',
+        name: 'First Trade',
         description: 'Execute your first trade',
-        icon: 'fas fa-baby',
-        xp: 100,
-        tokens: 50,
-        condition: (state) => state.totalTrades >= 1
+        icon: 'fas fa-handshake',
+        xp: 50,
+        tokens: 25
     },
     {
         id: 'first_profit',
-        name: 'Profit Hunter',
+        name: 'First Profit',
         description: 'Make your first profitable trade',
-        icon: 'fas fa-money-bill-wave',
-        xp: 200,
-        tokens: 100,
-        condition: (state) => state.profitableTrades >= 1
+        icon: 'fas fa-chart-line',
+        xp: 100,
+        tokens: 50
     },
     {
-        id: 'crypto_whale',
-        name: 'Crypto Whale',
-        description: 'Hold $10,000 worth of cryptocurrency',
-        icon: 'fas fa-whale',
-        xp: 500,
-        tokens: 250,
-        condition: (state) => calculateCryptoValue() >= 10000
+        id: 'portfolio_20k',
+        name: 'Twenty Grand',
+        description: 'Reach $20,000 portfolio value',
+        icon: 'fas fa-money-bill-wave',
+        xp: 300,
+        tokens: 150
     },
     {
         id: 'day_trader',
-        name: 'Day Trader Pro',
-        description: 'Make 20 trades in a single day',
+        name: 'Day Trader',
+        description: 'Make 10 trades in a day',
+        icon: 'fas fa-calendar-day',
+        xp: 200,
+        tokens: 100
+    }
+];
+
+// Challenges
+const challenges = [
+    {
+        id: 'daily_trade_3',
+        name: 'Active Trader',
+        description: 'Make 3 trades today',
+        target: 3,
+        reward: { xp: 100, tokens: 50 }
+    },
+    {
+        id: 'profit_1000',
+        name: 'Profit Hunter',
+        description: 'Make $1,000 profit',
+        target: 1000,
+        reward: { xp: 300, tokens: 150 }
+    }
+];
+
+// Upgrades
+const upgrades = [
+    {
+        id: 'upgrade_fee_1',
+        name: 'Reduced Fees I',
+        description: 'Reduce trading fees by 10%',
+        icon: 'fas fa-percentage',
+        cost: 500,
+        effect: 'feeReduction'
+    },
+    {
+        id: 'upgrade_insight',
+        name: 'Market Insight',
+        description: 'See price trends before they happen',
         icon: 'fas fa-chart-line',
-        xp: 300,
-        tokens: 150,
-        condition: (state) => state.tradesToday >= 20
-    },
-    {
-        id: 'diamond_hands',
-        name: 'Diamond Hands',
-        description: 'Hold an asset through a 30% dip without selling',
-        icon: 'fas fa-gem',
-        xp: 750,
-        tokens: 375,
-        condition: (state) => checkDiamondHands()
-    },
-    {
-        id: 'portfolio_100k',
-        name: '100K Club',
-        description: 'Reach $100,000 total portfolio value',
-        icon: 'fas fa-trophy',
-        xp: 1000,
-        tokens: 500,
-        condition: (state) => calculateTotalPortfolioValue() >= 100000
-    },
-    {
-        id: 'win_streak_10',
-        name: 'Unstoppable',
-        description: 'Achieve 10 profitable trades in a row',
-        icon: 'fas fa-fire',
-        xp: 800,
-        tokens: 400,
-        condition: (state) => sessionStats.currentWinStreak >= 10
-    },
-    {
-        id: 'diversification',
-        name: 'Diversified King',
-        description: 'Own 10 different assets at once',
-        icon: 'fas fa-layer-group',
-        xp: 600,
-        tokens: 300,
-        condition: (state) => Object.keys(portfolio).filter(sym => portfolio[sym].amount > 0).length >= 10
-    },
-    {
-        id: 'volume_trader',
-        name: 'Volume Legend',
-        description: 'Trade $1,000,000 total volume',
-        icon: 'fas fa-chart-bar',
-        xp: 1500,
-        tokens: 750,
-        condition: (state) => player.totalVolume >= 1000000
-    },
-    {
-        id: 'level_50',
-        name: 'Trading God',
-        description: 'Reach level 50',
-        icon: 'fas fa-crown',
-        xp: 5000,
-        tokens: 2500,
-        condition: (state) => player.level >= 50
+        cost: 1000,
+        effect: 'marketInsight'
     }
 ];
 
 // ====================
-// GAME INITIALIZATION
-// ====================
-function initializeGame() {
-    SoundSystem.init();
-    ParticleSystem.update();
-    initializePriceHistory();
-    checkDailyBonus();
-    
-    // Start play time tracking
-    setInterval(() => {
-        player.playTime++;
-    }, 1000);
-    
-    // Auto-save every 30 seconds
-    setInterval(saveGame, 30000);
-    
-    // Initialize confetti
-    setTimeout(() => {
-        confetti = new ConfettiGenerator({ target: 'particles' });
-    }, 1000);
-}
-
-// ====================
-// PRICE HISTORY INIT
+// INITIALIZATION
 // ====================
 function initializePriceHistory() {
     for (let symbol in assets) {
         priceHistory[symbol] = [];
         let basePrice = assets[symbol].price;
-        
-        // Generate realistic historical data
-        for (let i = 0; i < CONFIG.CHART_HISTORY_DAYS; i++) {
-            const volatility = assets[symbol].volatility;
-            let change;
-            
-            // Add some trends based on asset type
-            if (assets[symbol].trend === 'bullish') {
-                change = (Math.random() * volatility * 1.5 - volatility * 0.5);
-            } else if (assets[symbol].trend === 'bearish') {
-                change = (Math.random() * volatility * 1.5 - volatility);
-            } else {
-                change = (Math.random() * volatility * 2 - volatility);
-            }
-            
+        // Generate 30 days of historical data
+        for (let i = 0; i < 30; i++) {
+            let change = (Math.random() * assets[symbol].volatility * 2 - assets[symbol].volatility);
             basePrice *= (1 + change);
             priceHistory[symbol].push({
                 day: i + 1,
-                price: basePrice
+                price: Math.round(basePrice * 100) / 100
             });
         }
-        
-        // Set current price
+        // Set current price as the last one
         assets[symbol].price = Math.round(basePrice * 100) / 100;
         previousPrices[symbol] = assets[symbol].price;
     }
 }
 
 // ====================
-// MARKET UPDATE WITH EVENTS
+// TAB SWITCHING - FIXED!
+// ====================
+function switchTab(tabName) {
+    console.log(`Switching to tab: ${tabName}`);
+    
+    // Hide all tab contents
+    document.querySelectorAll('.tab-content').forEach(tab => {
+        tab.classList.remove('active');
+    });
+    
+    // Remove active class from all tab buttons
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    // Show selected tab content
+    const tabElement = document.getElementById(`${tabName}-tab`);
+    if (tabElement) {
+        tabElement.classList.add('active');
+    } else {
+        console.error(`Tab element not found: ${tabName}-tab`);
+        // Fallback to market tab
+        document.getElementById('market-tab').classList.add('active');
+    }
+    
+    // Add active class to clicked button
+    event.currentTarget.classList.add('active');
+    
+    // Render specific content for the tab
+    switch(tabName) {
+        case 'market':
+            renderMarket();
+            renderChart();
+            break;
+        case 'portfolio':
+            renderPortfolio();
+            renderProfileStats();
+            renderTransactionHistory();
+            break;
+        case 'achievements':
+            renderAchievements();
+            break;
+        case 'challenges':
+            renderChallenges();
+            break;
+        case 'upgrades':
+            renderUpgrades();
+            break;
+    }
+}
+
+// ====================
+// MARKET FUNCTIONS
 // ====================
 function updateMarket() {
+    console.log('Updating market...');
     tradesToday = 0;
     
-    // Check daily streak
-    const today = new Date().toDateString();
-    if (player.lastPlayed !== today) {
-        if (isConsecutiveDay(player.lastPlayed, today)) {
-            player.dailyStreak++;
-        } else {
-            player.dailyStreak = 1;
-        }
-        player.lastPlayed = today;
-    }
-    
-    // Random market events (15% chance)
-    if (Math.random() < 0.15) {
-        triggerMarketEvent();
-    }
-    
-    // Update prices with enhanced volatility
     for (let symbol in assets) {
         let asset = assets[symbol];
         let previousPrice = asset.price;
         previousPrices[symbol] = previousPrice;
         
-        // Calculate change with trend influence
-        let change = calculatePriceChange(asset);
-        
-        // Apply change
-        asset.price *= (1 + change);
-        asset.price = Math.round(asset.price * 100) / 100;
-        
-        // Store change for animation
-        const priceChange = ((asset.price - previousPrice) / previousPrice) * 100;
-        asset.change24h = priceChange;
-        
-        // Animate significant changes (>2%)
-        if (Math.abs(priceChange) > 2) {
-            animatePriceChange(symbol, priceChange);
+        // Calculate price change
+        let change;
+        if (asset.type === 'crypto') {
+            // Crypto: higher volatility
+            change = (Math.random() * asset.volatility * 2 - asset.volatility);
+            // 10% chance of big move
+            if (Math.random() < 0.1) {
+                change *= 2;
+            }
+        } else {
+            // Stocks: lower volatility
+            change = (Math.random() * asset.volatility * 2 - asset.volatility);
         }
         
-        // Update history
+        // Update price
+        asset.price *= (1 + change);
+        asset.price = Math.round(asset.price * 100) / 100;
+        asset.change24h = ((asset.price - previousPrice) / previousPrice) * 100;
+        
+        // Update price history
         priceHistory[symbol].push({
             day: day,
             price: asset.price
         });
-        if (priceHistory[symbol].length > CONFIG.CHART_HISTORY_DAYS) {
+        if (priceHistory[symbol].length > 30) {
             priceHistory[symbol].shift();
         }
     }
     
     day++;
-    checkAchievements();
+    console.log(`Day ${day} completed`);
+    
+    // Update UI
+    renderMarket();
+    renderPortfolio();
+    renderChart();
     updatePlayerStats();
-    render();
-}
-
-function calculatePriceChange(asset) {
-    const volatility = asset.volatility;
-    let baseChange = (Math.random() * volatility * 2 - volatility);
     
-    // Add trend bias
-    switch(asset.trend) {
-        case 'bullish': baseChange += volatility * 0.3; break;
-        case 'bearish': baseChange -= volatility * 0.3; break;
-        case 'meme': baseChange *= 1.5; break;
-    }
-    
-    // Add momentum from previous change
-    if (asset.change24h > 5) baseChange += volatility * 0.2;
-    if (asset.change24h < -5) baseChange -= volatility * 0.2;
-    
-    return baseChange;
+    // Show notification
+    showEventPopup(
+        '📈 Market Updated',
+        'Prices have been updated for the new day!',
+        'Check your portfolio performance'
+    );
 }
 
 // ====================
-// MARKET EVENTS
-// ====================
-function triggerMarketEvent() {
-    const events = [
-        {
-            name: "🚀 BULL RUN!",
-            description: "Market sentiment turns extremely bullish! All assets surge!",
-            effect: () => {
-                for (let symbol in assets) {
-                    const boost = 0.1 + Math.random() * 0.15;
-                    assets[symbol].price *= (1 + boost);
-                }
-                showEventPopup("🚀 MARKET EVENT", "Bull Run!", "All assets +10-25%!");
-            }
-        },
-        {
-            name: "🐻 MARKET CRASH!",
-            description: "Panic selling hits the markets! Prices plummet!",
-            effect: () => {
-                for (let symbol in assets) {
-                    const drop = 0.08 + Math.random() * 0.12;
-                    assets[symbol].price *= (1 - drop);
-                }
-                showEventPopup("🐻 MARKET EVENT", "Market Crash!", "All assets -8-20%!");
-            }
-        },
-        {
-            name: "⚡ BITCOIN SURGE",
-            description: "Bitcoin breaks key resistance level! Crypto rally incoming!",
-            effect: () => {
-                if (assets.BTC) {
-                    assets.BTC.price *= 1.25;
-                    showEventPopup("⚡ MARKET EVENT", "Bitcoin Surge!", "BTC +25%!");
-                }
-            }
-        },
-        {
-            name: "🎮 MEMECOIN MANIA",
-            description: "Social media frenzy drives meme assets crazy!",
-            effect: () => {
-                for (let symbol in assets) {
-                    if (assets[symbol].trend === 'meme') {
-                        const pump = 0.3 + Math.random() * 0.4;
-                        assets[symbol].price *= (1 + pump);
-                    }
-                }
-                showEventPopup("🎮 MARKET EVENT", "Memecoin Mania!", "Meme assets +30-70%!");
-            }
-        },
-        {
-            name: "💎 DIAMOND HANDS REWARD",
-            description: "Market rewards long-term holders!",
-            effect: () => {
-                for (let symbol in assets) {
-                    if (portfolio[symbol].amount > 0) {
-                        const heldDays = day - portfolio[symbol].purchaseDay;
-                        if (heldDays > 7) {
-                            const reward = Math.min(heldDays * 0.01, 0.3);
-                            assets[symbol].price *= (1 + reward);
-                        }
-                    }
-                }
-                showEventPopup("💎 MARKET EVENT", "Diamond Hands!", "Long-term holdings rewarded!");
-            }
-        }
-    ];
-    
-    const event = events[Math.floor(Math.random() * events.length)];
-    event.effect();
-}
-
-// ====================
-// TRADING FUNCTIONS (ENHANCED)
+// TRADING FUNCTIONS
 // ====================
 function buy() {
     let asset = document.getElementById('asset').value.toUpperCase().trim();
     let amount = parseFloat(document.getElementById('amount').value);
     
     if (!asset || !assets[asset]) {
-        showError(`Invalid asset! Available: ${Object.keys(assets).slice(0, 5).join(', ')}...`);
+        alert(`Invalid asset. Available: ${Object.keys(assets).join(', ')}`);
         return;
     }
     
     if (isNaN(amount) || amount <= 0) {
-        showError('Enter a valid amount!');
+        alert('Please enter a valid positive amount');
         return;
     }
     
@@ -815,11 +366,11 @@ function buy() {
     let cost = price * amount;
     
     if (cost > cash) {
-        showError(`Need $${cost.toFixed(2)} but have $${cash.toFixed(2)}!`);
+        alert(`Insufficient funds! You need $${cost.toFixed(2)} but only have $${cash.toFixed(2)}`);
         return;
     }
     
-    // Execute trade
+    // Execute buy
     cash -= cost;
     portfolio[asset].amount += amount;
     portfolio[asset].totalCost += cost;
@@ -836,28 +387,26 @@ function buy() {
         day: day
     });
     
-    // Update stats
     tradesToday++;
     totalTrades++;
-    sessionStats.trades++;
-    player.totalVolume += cost;
     
     // Add XP
-    const xpGain = Math.floor(cost / 100);
-    addXP(xpGain);
-    
-    // Show particles
-    const inputRect = document.getElementById('amount').getBoundingClientRect();
-    ParticleSystem.create('coin', inputRect.left, inputRect.top);
-    
-    // Play sound
-    SoundSystem.play('buy');
+    addXP(Math.floor(cost / 100));
     
     // Clear input
     document.getElementById('amount').value = '';
     
+    // Check achievements
     checkAchievements();
-    render();
+    
+    // Update UI
+    renderMarket();
+    renderPortfolio();
+    showEventPopup(
+        '✅ Buy Order Executed',
+        `Bought ${amount} ${asset} at $${price.toFixed(2)}`,
+        `Total: $${cost.toFixed(2)}`
+    );
 }
 
 function sell() {
@@ -865,17 +414,17 @@ function sell() {
     let amount = parseFloat(document.getElementById('amount').value);
     
     if (!asset || !assets[asset]) {
-        showError(`Invalid asset! Available: ${Object.keys(assets).slice(0, 5).join(', ')}...`);
+        alert(`Invalid asset. Available: ${Object.keys(assets).join(', ')}`);
         return;
     }
     
     if (isNaN(amount) || amount <= 0) {
-        showError('Enter a valid amount!');
+        alert('Please enter a valid positive amount');
         return;
     }
     
     if (portfolio[asset].amount < amount) {
-        showError(`Only have ${portfolio[asset].amount.toFixed(4)} ${asset}!`);
+        alert(`Insufficient ${asset}! You have ${portfolio[asset].amount.toFixed(4)} but trying to sell ${amount}`);
         return;
     }
     
@@ -886,24 +435,19 @@ function sell() {
     let costOfGoodsSold = (portfolio[asset].totalCost / portfolio[asset].amount) * amount;
     let profitLoss = revenue - costOfGoodsSold;
     
-    // Update stats
     if (profitLoss > 0) {
         profitableTrades++;
-        updateWinStreak(true);
-        sessionStats.profit += profitLoss;
         player.totalProfit += profitLoss;
-    } else {
-        updateWinStreak(false);
     }
     
-    // Execute trade
+    // Execute sell
     cash += revenue;
     portfolio[asset].amount -= amount;
     portfolio[asset].totalCost -= costOfGoodsSold;
     
     if (portfolio[asset].amount === 0) {
         portfolio[asset].avgPrice = 0;
-        portfolio[ymbol].purchaseDay = 0;
+        portfolio[asset].purchaseDay = 0;
     } else {
         portfolio[asset].avgPrice = portfolio[asset].totalCost / portfolio[asset].amount;
     }
@@ -919,149 +463,184 @@ function sell() {
         day: day
     });
     
-    // Update stats
     tradesToday++;
     totalTrades++;
-    sessionStats.trades++;
-    player.totalVolume += revenue;
     
     // Add XP based on profit
     if (profitLoss > 0) {
-        const xpGain = Math.floor(profitLoss / 50);
-        addXP(xpGain);
-        
-        // Show floating coins for big profits
-        if (profitLoss > 1000) {
-            showFloatingCoins(Math.min(Math.floor(profitLoss / 500), 100));
-        }
+        addXP(Math.floor(profitLoss / 50));
     }
-    
-    // Show particles
-    const inputRect = document.getElementById('amount').getBoundingClientRect();
-    ParticleSystem.create('token', inputRect.left, inputRect.top);
-    
-    // Play sound
-    SoundSystem.play('sell');
     
     // Clear input
     document.getElementById('amount').value = '';
     
+    // Check achievements
     checkAchievements();
-    render();
-}
-
-// ====================
-// RENDER FUNCTIONS (ENHANCED)
-// ====================
-function render() {
+    
+    // Update UI
     renderMarket();
     renderPortfolio();
-    renderTransactionHistory();
-    renderNewsTicker();
-    renderChart();
-    updatePlayerStats();
+    
+    showEventPopup(
+        '✅ Sell Order Executed',
+        `Sold ${amount} ${asset} at $${price.toFixed(2)}`,
+        profitLoss >= 0 ? `Profit: +$${profitLoss.toFixed(2)}` : `Loss: -$${Math.abs(profitLoss).toFixed(2)}`
+    );
 }
 
+function nextDay() {
+    console.log('Next day button clicked');
+    updateMarket();
+}
+
+// ====================
+// RENDER FUNCTIONS
+// ====================
 function renderMarket() {
     let marketGrid = document.getElementById('marketGrid');
+    if (!marketGrid) return;
+    
     marketGrid.innerHTML = '';
     
     for (let symbol in assets) {
         let asset = assets[symbol];
         let changeClass = asset.change24h >= 0 ? 'positive' : 'negative';
         let changeIcon = asset.change24h >= 0 ? 'fas fa-arrow-up' : 'fas fa-arrow-down';
-        let changeText = `${asset.change24h >= 0 ? '+' : ''}${asset.change24h.toFixed(2)}%`;
         
         marketGrid.innerHTML += `
-            <div class="asset-card" data-symbol="${symbol}" onclick="selectAsset('${symbol}')">
-                <div class="asset-header">
-                    <div class="asset-name">
+            <div class="crypto-card" onclick="selectAsset('${symbol}')">
+                <div class="crypto-header">
+                    <div class="crypto-name">
                         <i class="${asset.icon}"></i> ${symbol}
-                        <span style="font-size: 0.8rem; color: ${asset.type === 'crypto' ? '#f7931a' : '#2196F3'}">
-                            ${asset.type === 'crypto' ? 'CRYPTO' : 'STOCK'}
-                        </span>
+                        <small style="color: #888; font-size: 0.8em;">${asset.type === 'crypto' ? 'CRYPTO' : 'STOCK'}</small>
                     </div>
-                    <div class="asset-price">$${asset.price.toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
+                    <div class="crypto-price">$${asset.price.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 8})}</div>
                 </div>
-                <div class="asset-change ${changeClass}">
-                    <i class="${changeIcon}"></i> ${changeText}
-                </div>
-                <div style="margin-top: 10px; font-size: 0.9rem; color: #aaa;">
-                    Vol: $${(asset.volume24h / 1000000).toFixed(0)}M
+                <div class="crypto-change ${changeClass}">
+                    <i class="${changeIcon}"></i> ${Math.abs(asset.change24h).toFixed(2)}%
                 </div>
             </div>
         `;
     }
+    
+    // Render asset selector
+    let assetSelector = document.getElementById('assetSelector');
+    if (assetSelector) {
+        assetSelector.innerHTML = '';
+        let count = 0;
+        for (let symbol in assets) {
+            if (count >= 8) break;
+            let isActive = symbol === selectedAsset ? 'active' : '';
+            assetSelector.innerHTML += `
+                <button class="asset-btn ${isActive}" onclick="selectAsset('${symbol}')" style="padding: 8px; margin: 5px; background: ${symbol === selectedAsset ? '#f7931a' : '#333'}; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                    ${symbol}
+                </button>
+            `;
+            count++;
+        }
+    }
+    
+    // Update datalist
+    let assetsList = document.getElementById('assetsList');
+    if (assetsList) {
+        assetsList.innerHTML = '';
+        for (let symbol in assets) {
+            assetsList.innerHTML += `<option value="${symbol}">${assets[symbol].name} (${symbol})</option>`;
+        }
+    }
+    
+    // Set selected asset in input
+    document.getElementById('asset').value = selectedAsset;
 }
 
 function renderPortfolio() {
     let portfolioGrid = document.getElementById('portfolioGrid');
+    if (!portfolioGrid) return;
+    
     portfolioGrid.innerHTML = '';
     
-    let totalValue = cash;
-    let holdings = [];
+    let totalPortfolioValue = cash;
+    let hasHoldings = false;
     
     for (let symbol in portfolio) {
-        if (portfolio[symbol].amount > 0) {
-            let asset = assets[symbol];
-            let holdingValue = portfolio[symbol].amount * asset.price;
-            totalValue += holdingValue;
+        let holding = portfolio[symbol];
+        if (holding.amount > 0) {
+            hasHoldings = true;
+            let currentValue = holding.amount * assets[symbol].price;
+            totalPortfolioValue += currentValue;
             
-            holdings.push({
-                symbol,
-                value: holdingValue,
-                amount: portfolio[symbol].amount,
-                profit: holdingValue - portfolio[symbol].totalCost
-            });
+            let profitLoss = currentValue - holding.totalCost;
+            let profitLossPercent = holding.totalCost > 0 ? (profitLoss / holding.totalCost * 100) : 0;
+            let plClass = profitLoss >= 0 ? 'positive' : 'negative';
+            
+            portfolioGrid.innerHTML += `
+                <div class="portfolio-item">
+                    <div style="font-weight: bold; font-size: 1.1rem; margin-bottom: 10px;">
+                        <i class="${assets[symbol].icon}"></i> ${symbol}
+                    </div>
+                    <div style="font-size: 1.2rem; font-weight: bold; margin-bottom: 10px;">
+                        $${currentValue.toLocaleString(undefined, {minimumFractionDigits: 2})}
+                    </div>
+                    <div style="color: #aaa; font-size: 0.9rem;">
+                        <div>Amount: ${holding.amount.toLocaleString(undefined, {maximumFractionDigits: 8})}</div>
+                        <div>Avg Price: $${holding.avgPrice.toFixed(2)}</div>
+                        <div>Current: $${assets[symbol].price.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 8})}</div>
+                        <div>P&L: <span class="${plClass}">${profitLoss >= 0 ? '+' : ''}$${profitLoss.toFixed(2)} (${profitLossPercent.toFixed(2)}%)</span></div>
+                    </div>
+                </div>
+            `;
         }
     }
     
-    // Sort by value
-    holdings.sort((a, b) => b.value - a.value);
+    if (!hasHoldings) {
+        portfolioGrid.innerHTML = '<div style="text-align: center; color: #aaa; padding: 40px;">No holdings yet. Start trading!</div>';
+    }
     
-    // Display top 6 holdings
-    holdings.slice(0, 6).forEach(holding => {
-        let asset = assets[holding.symbol];
-        let profitPercent = ((holding.value - portfolio[holding.symbol].totalCost) / portfolio[holding.symbol].totalCost * 100) || 0;
-        let profitClass = profitPercent >= 0 ? 'positive' : 'negative';
-        
-        portfolioGrid.innerHTML += `
-            <div class="portfolio-item">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                    <div style="font-weight: bold; font-size: 1.2rem;">
-                        <i class="${asset.icon}"></i> ${holding.symbol}
-                    </div>
-                    <div style="font-size: 1.3rem; font-weight: bold;">
-                        $${holding.value.toLocaleString(undefined, {minimumFractionDigits: 2})}
-                    </div>
-                </div>
-                <div style="color: #aaa; font-size: 0.9rem;">
-                    Amount: ${holding.amount.toFixed(4)}
-                    <br>P&L: <span class="${profitClass}">${profitPercent >= 0 ? '+' : ''}${profitPercent.toFixed(2)}%</span>
-                </div>
-            </div>
-        `;
-    });
-    
-    document.getElementById('totalValue').textContent = `$${totalValue.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
-    player.highestPortfolioValue = Math.max(player.highestPortfolioValue, totalValue);
+    document.getElementById('totalValue').textContent = `$${totalPortfolioValue.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
+    player.highestPortfolioValue = Math.max(player.highestPortfolioValue, totalPortfolioValue);
 }
 
+// ====================
+// CHART FUNCTION - FIXED!
+// ====================
 function renderChart() {
+    console.log('Rendering chart for:', selectedAsset);
+    
     const canvas = document.getElementById('priceChart');
-    if (!canvas) return;
+    if (!canvas) {
+        console.error('Canvas element not found!');
+        return;
+    }
     
     const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    if (!ctx) {
+        console.error('Could not get canvas context!');
+        return;
+    }
     
-    // Clear previous chart
+    // Destroy previous chart if exists
     if (chart) {
         chart.destroy();
     }
     
-    const selectedHistory = priceHistory[selectedAsset] || [];
-    if (selectedHistory.length === 0) return;
+    // Get price history for selected asset
+    let selectedHistory = priceHistory[selectedAsset];
+    if (!selectedHistory || selectedHistory.length === 0) {
+        console.log('No price history for', selectedAsset, '- generating default data');
+        selectedHistory = [];
+        let basePrice = assets[selectedAsset] ? assets[selectedAsset].price : 100;
+        for (let i = 0; i < 30; i++) {
+            let change = (Math.random() * 0.1) - 0.05;
+            basePrice *= (1 + change);
+            selectedHistory.push({
+                day: i + 1,
+                price: Math.round(basePrice * 100) / 100
+            });
+        }
+        priceHistory[selectedAsset] = selectedHistory;
+    }
     
+    // Prepare data
     const labels = selectedHistory.map(item => `Day ${item.day}`);
     const prices = selectedHistory.map(item => item.price);
     const asset = assets[selectedAsset];
@@ -1069,8 +648,9 @@ function renderChart() {
     // Create gradient
     const gradient = ctx.createLinearGradient(0, 0, 0, 400);
     gradient.addColorStop(0, `${asset.color}40`);
-    gradient.addColorStop(1, `${asset.color}10`);
+    gradient.addColorStop(1, `${asset.color}05`);
     
+    // Create chart
     chart = new Chart(ctx, {
         type: 'line',
         data: {
@@ -1083,10 +663,11 @@ function renderChart() {
                 borderWidth: 3,
                 fill: true,
                 tension: 0.4,
-                pointRadius: 2,
+                pointRadius: 3,
                 pointBackgroundColor: asset.color,
                 pointBorderColor: '#fff',
-                pointBorderWidth: 1
+                pointBorderWidth: 1,
+                pointHoverRadius: 6
             }]
         },
         options: {
@@ -1097,37 +678,211 @@ function renderChart() {
                     labels: {
                         color: '#fff',
                         font: {
-                            size: 14,
-                            family: 'Orbitron'
+                            size: 14
                         }
                     }
                 },
                 tooltip: {
-                    backgroundColor: 'rgba(20, 20, 40, 0.9)',
+                    backgroundColor: 'rgba(20, 20, 30, 0.9)',
                     titleColor: '#fff',
                     bodyColor: '#fff',
                     borderColor: asset.color,
                     borderWidth: 1,
                     callbacks: {
-                        label: (context) => `${selectedAsset}: $${context.parsed.y.toLocaleString()}`
+                        label: function(context) {
+                            return `${selectedAsset}: $${context.parsed.y.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
+                        }
                     }
                 }
             },
             scales: {
                 x: {
-                    grid: { color: 'rgba(255, 255, 255, 0.1)' },
-                    ticks: { color: '#aaa' }
+                    grid: {
+                        color: 'rgba(255, 255, 255, 0.1)'
+                    },
+                    ticks: {
+                        color: '#aaa'
+                    }
                 },
                 y: {
-                    grid: { color: 'rgba(255, 255, 255, 0.1)' },
-                    ticks: { 
+                    grid: {
+                        color: 'rgba(255, 255, 255, 0.1)'
+                    },
+                    ticks: {
                         color: '#aaa',
-                        callback: (value) => `$${value.toLocaleString()}`
+                        callback: function(value) {
+                            return '$' + value.toLocaleString();
+                        }
                     }
                 }
+            },
+            interaction: {
+                intersect: false,
+                mode: 'index'
+            },
+            animation: {
+                duration: 750
             }
         }
     });
+    
+    console.log('Chart rendered successfully');
+}
+
+// ====================
+// ACHIEVEMENTS
+// ====================
+function renderAchievements() {
+    let achievementsGrid = document.getElementById('achievementsGrid');
+    if (!achievementsGrid) return;
+    
+    achievementsGrid.innerHTML = '';
+    
+    for (let achievement of achievements) {
+        let unlocked = player.achievements.includes(achievement.id);
+        
+        achievementsGrid.innerHTML += `
+            <div class="achievement-card ${unlocked ? 'unlocked' : ''}">
+                <div style="font-size: 2rem; margin-bottom: 10px; color: ${unlocked ? '#f7931a' : '#666'}">
+                    <i class="${achievement.icon}"></i>
+                </div>
+                <div style="font-weight: bold; margin-bottom: 5px;">${achievement.name}</div>
+                <div style="color: #aaa; font-size: 0.9rem; margin-bottom: 10px;">${achievement.description}</div>
+                <div style="color: ${unlocked ? '#4CAF50' : '#FFD700'}; font-size: 0.8rem;">
+                    ${unlocked ? '✓ Unlocked' : `Reward: ${achievement.xp} XP + ${achievement.tokens} Tokens`}
+                </div>
+            </div>
+        `;
+    }
+}
+
+function checkAchievements() {
+    // First trade
+    if (totalTrades >= 1 && !player.achievements.includes('first_trade')) {
+        player.achievements.push('first_trade');
+        addXP(50);
+        player.tokens += 25;
+        showEventPopup(
+            '🎉 Achievement Unlocked!',
+            'First Trade',
+            '+50 XP & 25 Tokens'
+        );
+    }
+    
+    // First profit
+    if (profitableTrades >= 1 && !player.achievements.includes('first_profit')) {
+        player.achievements.push('first_profit');
+        addXP(100);
+        player.tokens += 50;
+        showEventPopup(
+            '🎉 Achievement Unlocked!',
+            'First Profit',
+            '+100 XP & 50 Tokens'
+        );
+    }
+    
+    // Portfolio value
+    const totalValue = calculateTotalPortfolioValue();
+    if (totalValue >= 20000 && !player.achievements.includes('portfolio_20k')) {
+        player.achievements.push('portfolio_20k');
+        addXP(300);
+        player.tokens += 150;
+        showEventPopup(
+            '🎉 Achievement Unlocked!',
+            'Twenty Grand',
+            '+300 XP & 150 Tokens'
+        );
+    }
+}
+
+function calculateTotalPortfolioValue() {
+    let total = cash;
+    for (let symbol in portfolio) {
+        total += portfolio[symbol].amount * assets[symbol].price;
+    }
+    return total;
+}
+
+// ====================
+// CHALLENGES
+// ====================
+function renderChallenges() {
+    let challengesList = document.getElementById('challengesList');
+    if (!challengesList) return;
+    
+    challengesList.innerHTML = '';
+    
+    for (let challenge of challenges) {
+        let completed = player.completedChallenges.includes(challenge.id);
+        
+        challengesList.innerHTML += `
+            <div class="challenge-card" style="background: rgba(30, 30, 40, 0.9); border-radius: 10px; padding: 15px; margin-bottom: 10px; border: 2px solid ${completed ? '#4CAF50' : '#333'};">
+                <div style="font-weight: bold; color: #f7931a; margin-bottom: 5px;">${challenge.name}</div>
+                <div style="color: #aaa; font-size: 0.9rem; margin-bottom: 10px;">${challenge.description}</div>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div style="color: ${completed ? '#4CAF50' : '#FFD700'};">
+                        ${completed ? 'Completed ✓' : 'In Progress'}
+                    </div>
+                    <div style="color: #FFD700; font-weight: bold;">
+                        ${challenge.reward.xp} XP + ${challenge.reward.tokens} Tokens
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+}
+
+// ====================
+// UPGRADES
+// ====================
+function renderUpgrades() {
+    let upgradesGrid = document.getElementById('upgradesGrid');
+    if (!upgradesGrid) return;
+    
+    upgradesGrid.innerHTML = '';
+    
+    for (let upgrade of upgrades) {
+        let purchased = player.upgrades.includes(upgrade.id);
+        let canAfford = player.tokens >= upgrade.cost;
+        
+        upgradesGrid.innerHTML += `
+            <div class="upgrade-card" style="background: rgba(30, 30, 40, 0.9); border-radius: 10px; padding: 20px; margin-bottom: 15px; border: 2px solid ${purchased ? '#4CAF50' : canAfford ? '#00d4ff' : '#333'}; cursor: ${canAfford && !purchased ? 'pointer' : 'default'};" 
+                 onclick="${canAfford && !purchased ? `purchaseUpgrade('${upgrade.id}')` : ''}">
+                <div style="font-size: 2rem; margin-bottom: 10px; color: ${purchased ? '#4CAF50' : canAfford ? '#00d4ff' : '#666'}">
+                    <i class="${upgrade.icon}"></i>
+                </div>
+                <div style="font-weight: bold; margin-bottom: 5px;">${upgrade.name}</div>
+                <div style="color: #aaa; font-size: 0.9rem; margin-bottom: 10px;">${upgrade.description}</div>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div style="color: #FFD700; font-weight: bold;">
+                        ${upgrade.cost} Tokens
+                    </div>
+                    <div style="color: ${purchased ? '#4CAF50' : '#aaa'}">
+                        ${purchased ? '✓ Purchased' : (canAfford ? 'Click to Purchase' : 'Too Expensive')}
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+}
+
+function purchaseUpgrade(upgradeId) {
+    const upgrade = upgrades.find(u => u.id === upgradeId);
+    if (!upgrade) return;
+    
+    if (player.tokens >= upgrade.cost && !player.upgrades.includes(upgradeId)) {
+        player.tokens -= upgrade.cost;
+        player.upgrades.push(upgradeId);
+        
+        showEventPopup(
+            '⚡ Upgrade Purchased!',
+            upgrade.name,
+            'Now active in your game!'
+        );
+        
+        renderUpgrades();
+        updatePlayerStats();
+    }
 }
 
 // ====================
@@ -1139,8 +894,125 @@ function selectAsset(symbol) {
     renderChart();
 }
 
-function nextDay() {
-    updateMarket();
+function addXP(amount) {
+    player.xp += amount;
+    while (player.xp >= player.xpToNextLevel) {
+        player.xp -= player.xpToNextLevel;
+        player.level++;
+        player.xpToNextLevel = Math.floor(player.xpToNextLevel * 1.5);
+        
+        // Level up reward
+        player.tokens += player.level * 50;
+        
+        showEventPopup(
+            '🌟 Level Up!',
+            `You've reached Level ${player.level}!`,
+            `Reward: ${player.level * 50} Tokens`
+        );
+    }
+    updatePlayerStats();
+}
+
+function updatePlayerStats() {
+    document.getElementById('playerLevel').textContent = player.level;
+    document.getElementById('playerXP').textContent = player.xp;
+    document.getElementById('playerTokens').textContent = player.tokens;
+    document.getElementById('playerStreak').textContent = player.dailyStreak;
+    
+    document.getElementById('levelDisplay').textContent = player.level;
+    document.getElementById('currentXP').textContent = player.xp;
+    document.getElementById('nextLevelXP').textContent = player.xpToNextLevel;
+    
+    let xpPercent = (player.xp / player.xpToNextLevel) * 100;
+    document.getElementById('xpBar').style.width = `${xpPercent}%`;
+    
+    document.getElementById('dayCounter').textContent = day;
+}
+
+function renderProfileStats() {
+    let profileStats = document.getElementById('profileStats');
+    if (!profileStats) return;
+    
+    const totalValue = calculateTotalPortfolioValue();
+    const winRate = totalTrades > 0 ? (profitableTrades / totalTrades * 100).toFixed(1) : 0;
+    
+    profileStats.innerHTML = `
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px;">
+            <div style="background: rgba(30, 30, 40, 0.9); padding: 15px; border-radius: 10px;">
+                <div style="color: #aaa; font-size: 0.9rem;">Total Trades</div>
+                <div style="color: #fff; font-size: 1.5rem; font-weight: bold;">${totalTrades}</div>
+            </div>
+            <div style="background: rgba(30, 30, 40, 0.9); padding: 15px; border-radius: 10px;">
+                <div style="color: #aaa; font-size: 0.9rem;">Win Rate</div>
+                <div style="color: #fff; font-size: 1.5rem; font-weight: bold;">${winRate}%</div>
+            </div>
+            <div style="background: rgba(30, 30, 40, 0.9); padding: 15px; border-radius: 10px;">
+                <div style="color: #aaa; font-size: 0.9rem;">Total Profit</div>
+                <div style="color: ${player.totalProfit >= 0 ? '#4CAF50' : '#F44336'}; font-size: 1.5rem; font-weight: bold;">$${player.totalProfit.toFixed(2)}</div>
+            </div>
+            <div style="background: rgba(30, 30, 40, 0.9); padding: 15px; border-radius: 10px;">
+                <div style="color: #aaa; font-size: 0.9rem;">Days Played</div>
+                <div style="color: #fff; font-size: 1.5rem; font-weight: bold;">${day - 1}</div>
+            </div>
+        </div>
+    `;
+}
+
+function renderTransactionHistory() {
+    let historyDiv = document.getElementById('transactionHistory');
+    if (!historyDiv) return;
+    
+    historyDiv.innerHTML = '';
+    
+    // Show last 10 transactions
+    const recentTransactions = transactions.slice(-10).reverse();
+    
+    if (recentTransactions.length === 0) {
+        historyDiv.innerHTML = '<div style="text-align: center; color: #aaa; padding: 40px;">No transactions yet.</div>';
+        return;
+    }
+    
+    for (let tx of recentTransactions) {
+        const typeClass = tx.type === 'buy' ? 'transaction-buy' : 'transaction-sell';
+        const typeIcon = tx.type === 'buy' ? 'fas fa-arrow-up' : 'fas fa-arrow-down';
+        const typeColor = tx.type === 'buy' ? '#4CAF50' : '#F44336';
+        
+        historyDiv.innerHTML += `
+            <div class="${typeClass}" style="background: rgba(30, 30, 40, 0.7); border-radius: 8px; padding: 10px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; border-left: 4px solid ${typeColor};">
+                <div>
+                    <i class="${typeIcon}" style="color: ${typeColor};"></i>
+                    <strong>${tx.type.toUpperCase()}</strong> ${tx.amount} ${tx.asset}
+                </div>
+                <div>
+                    $${tx.price.toFixed(2)}
+                </div>
+                <div style="font-size: 0.9rem; color: #aaa;">
+                    Day ${tx.day}
+                </div>
+            </div>
+        `;
+    }
+}
+
+function renderNewsTicker() {
+    let newsContent = document.getElementById('newsContent');
+    if (!newsContent) return;
+    
+    newsContent.innerHTML = '';
+    
+    // Shuffle and pick 5 news items
+    let shuffledNews = [...newsHeadlines].sort(() => 0.5 - Math.random()).slice(0, 5);
+    
+    for (let headline of shuffledNews) {
+        newsContent.innerHTML += `
+            <div class="news-item">
+                <i class="fas fa-newspaper"></i> ${headline}
+            </div>
+        `;
+    }
+    
+    // Duplicate for seamless loop
+    newsContent.innerHTML += newsContent.innerHTML;
 }
 
 function showEventPopup(title, description, reward) {
@@ -1148,116 +1020,64 @@ function showEventPopup(title, description, reward) {
     document.getElementById('eventDescription').textContent = description;
     document.getElementById('eventReward').textContent = reward;
     document.getElementById('gameEventPopup').style.display = 'block';
-    
-    SoundSystem.play('achievement');
-    
-    // Launch confetti for major events
-    if (title.includes('ACHIEVEMENT') || title.includes('LEVEL')) {
-        launchConfetti();
-    }
 }
 
 function closeEventPopup() {
     document.getElementById('gameEventPopup').style.display = 'none';
 }
 
-function showError(message) {
-    showEventPopup('⚠️ ERROR', message, 'Try again!');
-    SoundSystem.play('error');
-}
-
-function addXP(amount) {
-    const oldLevel = player.level;
-    player.xp += amount;
-    
-    while (player.xp >= player.xpToNextLevel) {
-        player.xp -= player.xpToNextLevel;
-        player.level++;
-        player.xpToNextLevel = Math.floor(player.xpToNextLevel * CONFIG.LEVEL_MULTIPLIER);
-        
-        // Level up reward
-        const tokenReward = player.level * 100;
-        player.tokens += tokenReward;
-        
-        // Show celebration
-        showLevelUpAnimation();
-        showEventPopup(
-            '🌟 LEVEL UP! 🌟',
-            `You've reached Level ${player.level}!`,
-            `Reward: ${tokenReward} Tokens`
-        );
-    }
-    
-    // Show XP particles
-    if (amount > 0) {
-        ParticleSystem.create('xp', window.innerWidth / 2, window.innerHeight / 2);
-    }
-}
-
-function toggleSound() {
-    soundEnabled = !soundEnabled;
-    const icon = document.querySelector('#soundToggle i');
-    icon.className = soundEnabled ? 'fas fa-volume-up' : 'fas fa-volume-mute';
-    
-    if (soundEnabled) {
-        SoundSystem.play('bonus');
-    }
-}
-
-function saveGame() {
-    const gameData = {
-        cash, day, totalTrades, profitableTrades, portfolio, player, transactions,
-        priceHistory, selectedAsset, sessionStats
-    };
-    localStorage.setItem('cryptoGameSave', JSON.stringify(gameData));
-}
-
-function loadGame() {
-    const saved = localStorage.getItem('cryptoGameSave');
-    if (saved) {
-        const gameData = JSON.parse(saved);
-        Object.assign(this, gameData);
-        return true;
-    }
-    return false;
-}
-
 // ====================
-// GAME START
+// INITIALIZATION
 // ====================
-window.onload = function() {
-    if (!loadGame()) {
-        initializeGame();
-    }
+function init() {
+    console.log('Initializing game...');
     
+    // Initialize price history
+    initializePriceHistory();
+    
+    // Set up event listeners
+    document.getElementById('asset').addEventListener('input', function(e) {
+        let value = e.target.value.toUpperCase();
+        if (assets[value]) {
+            selectAsset(value);
+        }
+    });
+    
+    // Set up keyboard shortcuts
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Enter') {
+            buy();
+        }
+        if (event.key === 'Escape') {
+            document.getElementById('amount').value = '';
+        }
+        if (event.ctrlKey && event.key === 'n') {
+            event.preventDefault();
+            nextDay();
+        }
+    });
+    
+    // Initial render
+    renderMarket();
+    renderPortfolio();
+    renderNewsTicker();
+    renderChart();
+    updatePlayerStats();
+    renderAchievements();
+    renderChallenges();
+    renderUpgrades();
+    
+    // Welcome message
     setTimeout(() => {
-        render();
-        renderChart();
-        
-        // Welcome message
         showEventPopup(
-            '🎮 WELCOME TO CRYPTO TRADING GAME! 🎮',
+            '🎮 Welcome to Crypto Trading Game!',
             'Trade assets, complete challenges, and become a trading legend!',
             'Start with $10,000 and 100 Tokens!'
         );
     }, 1000);
-};
-
-// Switch tabs
-function switchTab(tabName) {
-    // Hide all tabs
-    document.querySelectorAll('.tab-content').forEach(tab => {
-        tab.classList.remove('active');
-    });
     
-    // Deactivate all tab buttons
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.classList.remove('active');
-    });
-    
-    // Show selected tab
-    document.getElementById(`${tabName}-tab`).classList.add('active');
-    
-    // Activate selected button
-    event.currentTarget.classList.add('active');
+    console.log('Game initialized successfully');
 }
+
+// Start the game when page loads
+window.onload = init;
