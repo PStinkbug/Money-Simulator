@@ -9,140 +9,297 @@ let priceHistory = {};
 let chart = null;
 let previousPrices = {};
 
-// Cryptocurrency data with more realistic properties
-let cryptocurrencies = {
+// Expanded Cryptocurrency and Stock Data
+let assets = {
+    // Cryptocurrencies
     BTC: {
         name: "Bitcoin",
         price: 32000,
         change24h: 0,
-        change7d: 0,
         marketCap: 620000000000,
         volume24h: 15000000000,
         volatility: 0.08,
         icon: "fab fa-bitcoin",
-        color: "#F7931A"
+        color: "#F7931A",
+        type: "crypto"
     },
     ETH: {
         name: "Ethereum",
         price: 2100,
         change24h: 0,
-        change7d: 0,
         marketCap: 250000000000,
         volume24h: 8000000000,
         volatility: 0.09,
         icon: "fab fa-ethereum",
-        color: "#627EEA"
+        color: "#627EEA",
+        type: "crypto"
     },
     SOL: {
         name: "Solana",
         price: 42.50,
         change24h: 0,
-        change7d: 0,
         marketCap: 17000000000,
         volume24h: 600000000,
         volatility: 0.12,
         icon: "fas fa-fire",
-        color: "#00FFA3"
+        color: "#00FFA3",
+        type: "crypto"
     },
     ADA: {
         name: "Cardano",
         price: 0.38,
         change24h: 0,
-        change7d: 0,
         marketCap: 13000000000,
         volume24h: 300000000,
         volatility: 0.10,
         icon: "fas fa-chart-line",
-        color: "#0033AD"
+        color: "#0033AD",
+        type: "crypto"
     },
     XRP: {
         name: "Ripple",
         price: 0.62,
         change24h: 0,
-        change7d: 0,
         marketCap: 33000000000,
         volume24h: 1500000000,
         volatility: 0.07,
         icon: "fas fa-bolt",
-        color: "#23292F"
+        color: "#23292F",
+        type: "crypto"
     },
     DOGE: {
         name: "Dogecoin",
         price: 0.075,
         change24h: 0,
-        change7d: 0,
         marketCap: 10000000000,
         volume24h: 400000000,
         volatility: 0.15,
         icon: "fas fa-dog",
-        color: "#C2A633"
+        color: "#C2A633",
+        type: "crypto"
     },
-    DOT: {
-        name: "Polkadot",
-        price: 5.20,
+    LTC: {
+        name: "Litecoin",
+        price: 85.50,
         change24h: 0,
-        change7d: 0,
-        marketCap: 6500000000,
-        volume24h: 200000000,
+        marketCap: 6200000000,
+        volume24h: 300000000,
+        volatility: 0.06,
+        icon: "fab fa-btc",
+        color: "#BFBBBB",
+        type: "crypto"
+    },
+    BNB: {
+        name: "Binance Coin",
+        price: 240.00,
+        change24h: 0,
+        marketCap: 37000000000,
+        volume24h: 900000000,
+        volatility: 0.08,
+        icon: "fas fa-exchange-alt",
+        color: "#F0B90B",
+        type: "crypto"
+    },
+    AVAX: {
+        name: "Avalanche",
+        price: 18.75,
+        change24h: 0,
+        marketCap: 6000000000,
+        volume24h: 250000000,
         volatility: 0.11,
-        icon: "fas fa-circle",
-        color: "#E6007A"
+        icon: "fas fa-snowflake",
+        color: "#E84142",
+        type: "crypto"
     },
     MATIC: {
         name: "Polygon",
         price: 0.85,
         change24h: 0,
-        change7d: 0,
         marketCap: 8000000000,
         volume24h: 350000000,
         volatility: 0.10,
         icon: "fas fa-bezier-curve",
-        color: "#8247E5"
+        color: "#8247E5",
+        type: "crypto"
+    },
+    SHIB: {
+        name: "Shiba Inu",
+        price: 0.0000085,
+        change24h: 0,
+        marketCap: 5000000000,
+        volume24h: 150000000,
+        volatility: 0.20,
+        icon: "fas fa-paw",
+        color: "#FFA500",
+        type: "crypto"
+    },
+    // Stocks
+    AAPL: {
+        name: "Apple Inc.",
+        price: 175.25,
+        change24h: 0,
+        marketCap: 2750000000000,
+        volume24h: 75000000,
+        volatility: 0.02,
+        icon: "fas fa-apple-alt",
+        color: "#A2AAAD",
+        type: "stock"
+    },
+    MSFT: {
+        name: "Microsoft",
+        price: 330.50,
+        change24h: 0,
+        marketCap: 2460000000000,
+        volume24h: 25000000,
+        volatility: 0.02,
+        icon: "fab fa-windows",
+        color: "#F25022",
+        type: "stock"
+    },
+    GOOGL: {
+        name: "Alphabet (Google)",
+        price: 135.75,
+        change24h: 0,
+        marketCap: 1700000000000,
+        volume24h: 1500000,
+        volatility: 0.03,
+        icon: "fab fa-google",
+        color: "#4285F4",
+        type: "stock"
+    },
+    AMZN: {
+        name: "Amazon",
+        price: 142.80,
+        change24h: 0,
+        marketCap: 1460000000000,
+        volume24h: 45000000,
+        volatility: 0.03,
+        icon: "fab fa-amazon",
+        color: "#FF9900",
+        type: "stock"
+    },
+    TSLA: {
+        name: "Tesla",
+        price: 240.00,
+        change24h: 0,
+        marketCap: 760000000000,
+        volume24h: 120000000,
+        volatility: 0.05,
+        icon: "fas fa-car",
+        color: "#CC0000",
+        type: "stock"
+    },
+    META: {
+        name: "Meta Platforms",
+        price: 305.40,
+        change24h: 0,
+        marketCap: 780000000000,
+        volume24h: 18000000,
+        volatility: 0.04,
+        icon: "fab fa-facebook",
+        color: "#1877F2",
+        type: "stock"
+    },
+    NVDA: {
+        name: "NVIDIA",
+        price: 450.00,
+        change24h: 0,
+        marketCap: 1110000000000,
+        volume24h: 45000000,
+        volatility: 0.04,
+        icon: "fas fa-microchip",
+        color: "#76B900",
+        type: "stock"
+    },
+    JPM: {
+        name: "JPMorgan Chase",
+        price: 155.75,
+        change24h: 0,
+        marketCap: 450000000000,
+        volume24h: 10000000,
+        volatility: 0.02,
+        icon: "fas fa-university",
+        color: "#0066CC",
+        type: "stock"
+    },
+    V: {
+        name: "Visa Inc.",
+        price: 250.60,
+        change24h: 0,
+        marketCap: 500000000000,
+        volume24h: 6500000,
+        volatility: 0.02,
+        icon: "fas fa-credit-card",
+        color: "#1A1F71",
+        type: "stock"
+    },
+    WMT: {
+        name: "Walmart",
+        price: 162.30,
+        change24h: 0,
+        marketCap: 437000000000,
+        volume24h: 5500000,
+        volatility: 0.01,
+        icon: "fas fa-shopping-cart",
+        color: "#0071CE",
+        type: "stock"
     }
 };
 
-// Portfolio with initial holdings
-let portfolio = {
-    BTC: { amount: 0, avgPrice: 0, totalCost: 0 },
-    ETH: { amount: 0, avgPrice: 0, totalCost: 0 },
-    SOL: { amount: 0, avgPrice: 0, totalCost: 0 },
-    ADA: { amount: 0, avgPrice: 0, totalCost: 0 },
-    XRP: { amount: 0, avgPrice: 0, totalCost: 0 },
-    DOGE: { amount: 0, avgPrice: 0, totalCost: 0 },
-    DOT: { amount: 0, avgPrice: 0, totalCost: 0 },
-    MATIC: { amount: 0, avgPrice: 0, totalCost: 0 }
-};
+// Initialize portfolio for all assets
+let portfolio = {};
+for (let symbol in assets) {
+    portfolio[symbol] = { amount: 0, avgPrice: 0, totalCost: 0 };
+}
 
 // Transaction history
 let transactions = [];
 
-// News headlines
+// Expanded News Headlines
 const newsHeadlines = [
-    "Bitcoin ETF approval expected this quarter",
-    "Ethereum completes Shanghai upgrade successfully",
-    "Regulatory crackdown on crypto exchanges in some regions",
-    "Major bank announces crypto custody services",
-    "NFT market shows signs of recovery",
-    "New blockchain protocol promises 100k TPS",
-    "Crypto donations surge for disaster relief",
-    "Stablecoin legislation under discussion in Congress",
-    "Web3 gaming platform raises $50M in funding",
-    "Environmental concerns drive shift to green mining",
-    "DeFi protocol suffers $20M exploit",
-    "Celebrity endorsement boosts meme coin by 300%",
-    "Central bank digital currency trials expand globally",
-    "Crypto winter may be ending, analysts suggest",
-    "Layer 2 solutions gain significant adoption"
+    // Cryptocurrency News
+    "Bitcoin ETF Approval Imminent: SEC Expected to Rule This Month",
+    "Ethereum Shanghai Upgrade Successfully Reduces Gas Fees by 40%",
+    "Global Crypto Regulations: New Framework Proposed by G20 Nations",
+    "Major Investment Bank Launches Bitcoin Custody Services for Institutions",
+    "NFT Market Sees 300% Growth as Digital Art Collections Gain Popularity",
+    "New Blockchain Protocol Achieves 500,000 Transactions Per Second",
+    "Crypto Donations Reach Record $2B for Global Humanitarian Efforts",
+    "Stablecoin Legislation Advances in US Congress with Bipartisan Support",
+    "Web3 Gaming Platform Secures $150M Funding from Top Venture Firms",
+    "Sustainable Mining Initiative Cuts Crypto Energy Consumption by 70%",
+    "DeFi Protocol Implements Enhanced Security Measures After $45M Exploit",
+    "Celebrity-Backed Meme Coin Surges 500% Amid Social Media Frenzy",
+    "China Launches CBDC Pilot Program in Major Metropolitan Areas",
+    "Analysts Predict End of Crypto Winter as Institutional Interest Returns",
+    "Layer 2 Solutions Adoption Grows, Processing 60% of Ethereum Transactions",
+    
+    // Stock Market News
+    "Federal Reserve Signals Potential Interest Rate Pause in Upcoming Meeting",
+    "Tech Stocks Rally as AI Investments Drive Record Quarterly Earnings",
+    "Automotive Industry Faces Supply Chain Challenges Amid Global Tensions",
+    "Pharmaceutical Giant Announces Breakthrough in Alzheimer's Treatment",
+    "Retail Sector Shows Strong Recovery with Holiday Season Approaching",
+    "Energy Companies Invest $200B in Renewable Infrastructure Projects",
+    "Banking Sector Reports Highest Profits Since 2008 Financial Crisis",
+    "Global Semiconductor Shortage Expected to Ease by Q4 2023",
+    "E-commerce Platforms Report 35% Growth in Cross-Border Transactions",
+    "Healthcare Stocks Volatile Amid FDA Regulatory Changes",
+    "Real Estate Market Shows Signs of Cooling as Mortgage Rates Rise",
+    "Entertainment Industry Adapts to Changing Consumer Streaming Habits",
+    "Aerospace and Defense Sector Receives Record Government Contracts",
+    "Consumer Goods Companies Navigate Inflation and Supply Chain Pressures",
+    "Financial Technology Startups Attract Record $85B in Venture Funding"
 ];
 
 // Initialize price history for charting
 function initializePriceHistory() {
-    for (let symbol in cryptocurrencies) {
+    for (let symbol in assets) {
         priceHistory[symbol] = [];
         // Generate 30 days of historical data
-        let basePrice = cryptocurrencies[symbol].price;
+        let basePrice = assets[symbol].price;
         for (let i = 0; i < 30; i++) {
-            let change = (Math.random() * cryptocurrencies[symbol].volatility * 2 - cryptocurrencies[symbol].volatility);
+            let change = (Math.random() * assets[symbol].volatility * 2 - assets[symbol].volatility);
             basePrice *= (1 + change);
             priceHistory[symbol].push({
                 day: i + 1,
@@ -150,8 +307,8 @@ function initializePriceHistory() {
             });
         }
         // Set current price as last historical price
-        cryptocurrencies[symbol].price = Math.round(basePrice * 100) / 100;
-        previousPrices[symbol] = cryptocurrencies[symbol].price;
+        assets[symbol].price = Math.round(basePrice * 100) / 100;
+        previousPrices[symbol] = assets[symbol].price;
     }
 }
 
@@ -165,50 +322,65 @@ function generateWalletAddress() {
     return address;
 }
 
-// Update market prices with realistic crypto volatility
+// Update market prices with realistic volatility
 function updateMarket() {
     tradesToday = 0;
     
-    for (let symbol in cryptocurrencies) {
-        let crypto = cryptocurrencies[symbol];
-        let previousPrice = crypto.price;
+    for (let symbol in assets) {
+        let asset = assets[symbol];
+        let previousPrice = asset.price;
         
         // Store previous price for change calculation
         previousPrices[symbol] = previousPrice;
         
-        // Simulate more realistic crypto price movements
+        // Different volatility patterns for crypto vs stocks
         let randomFactor = Math.random();
         let change;
         
-        if (randomFactor < 0.1) {
-            // 10% chance of a big move (±10-20%)
-            change = (Math.random() * 0.2 + 0.1) * (Math.random() > 0.5 ? 1 : -1);
-        } else if (randomFactor < 0.3) {
-            // 20% chance of a medium move (±5-10%)
-            change = (Math.random() * 0.1 + 0.05) * (Math.random() > 0.5 ? 1 : -1);
+        if (asset.type === 'crypto') {
+            // Crypto: Higher volatility
+            if (randomFactor < 0.1) {
+                // 10% chance of a big move (±10-20%)
+                change = (Math.random() * 0.2 + 0.1) * (Math.random() > 0.5 ? 1 : -1);
+            } else if (randomFactor < 0.3) {
+                // 20% chance of a medium move (±5-10%)
+                change = (Math.random() * 0.1 + 0.05) * (Math.random() > 0.5 ? 1 : -1);
+            } else {
+                // 70% chance of normal volatility
+                change = (Math.random() * asset.volatility * 2 - asset.volatility);
+            }
         } else {
-            // 70% chance of normal volatility
-            change = (Math.random() * crypto.volatility * 2 - crypto.volatility);
+            // Stocks: Lower volatility
+            if (randomFactor < 0.05) {
+                // 5% chance of a significant move (±5-8%)
+                change = (Math.random() * 0.06 + 0.02) * (Math.random() > 0.5 ? 1 : -1);
+            } else if (randomFactor < 0.2) {
+                // 15% chance of a moderate move (±2-4%)
+                change = (Math.random() * 0.02 + 0.01) * (Math.random() > 0.5 ? 1 : -1);
+            } else {
+                // 80% chance of normal volatility
+                change = (Math.random() * asset.volatility * 2 - asset.volatility);
+            }
         }
         
         // Add some momentum (if price was rising, more likely to continue)
-        if (crypto.change24h > 0) {
+        if (asset.change24h > 0) {
             change += Math.random() * 0.02;
-        } else if (crypto.change24h < 0) {
+        } else if (asset.change24h < 0) {
             change -= Math.random() * 0.02;
         }
         
         // Update price
-        crypto.price *= (1 + change);
-        crypto.price = Math.round(crypto.price * 100) / 100;
+        asset.price *= (1 + change);
+        asset.price = Math.round(asset.price * 100) / 100;
         
         // Update 24h change
-        crypto.change24h = ((crypto.price - previousPrice) / previousPrice) * 100;
+        asset.change24h = ((asset.price - previousPrice) / previousPrice) * 100;
         
         // Update price history for chart
         priceHistory[symbol].push({
             day: day,
-            price: crypto.price
+            price: asset.price
         });
         if (priceHistory[symbol].length > 30) {
             priceHistory[symbol].shift();
@@ -234,24 +406,36 @@ function renderMarket() {
     let marketGrid = document.getElementById('marketGrid');
     marketGrid.innerHTML = '';
     
-    for (let symbol in cryptocurrencies) {
-        let crypto = cryptocurrencies[symbol];
-        let changeClass = crypto.change24h >= 0 ? 'positive' : 'negative';
-        let changeIcon = crypto.change24h >= 0 ? 'fas fa-arrow-up' : 'fas fa-arrow-down';
+    // Filter for currently selected type (all, crypto, or stock)
+    let assetTypeFilter = document.getElementById('assetTypeFilter') ? 
+                         document.getElementById('assetTypeFilter').value : 'all';
+    
+    let filteredAssets = {};
+    for (let symbol in assets) {
+        if (assetTypeFilter === 'all' || assets[symbol].type === assetTypeFilter) {
+            filteredAssets[symbol] = assets[symbol];
+        }
+    }
+    
+    for (let symbol in filteredAssets) {
+        let asset = assets[symbol];
+        let changeClass = asset.change24h >= 0 ? 'positive' : 'negative';
+        let changeIcon = asset.change24h >= 0 ? 'fas fa-arrow-up' : 'fas fa-arrow-down';
         
         marketGrid.innerHTML += `
-            <div class="crypto-card" onclick="selectAsset('${symbol}')" style="border-left-color: ${crypto.color}">
+            <div class="crypto-card" onclick="selectAsset('${symbol}')" style="border-left-color: ${asset.color}">
                 <div class="crypto-header">
                     <div class="crypto-name">
-                        <i class="${crypto.icon}"></i> ${symbol}
+                        <i class="${asset.icon}"></i> ${symbol}
+                        <small style="color: #888; font-size: 0.8em;">${asset.type === 'crypto' ? 'CRYPTO' : 'STOCK'}</small>
                     </div>
-                    <div class="crypto-price">$${crypto.price.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 8})}</div>
+                    <div class="crypto-price">$${asset.price.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 8})}</div>
                 </div>
                 <div class="crypto-change ${changeClass}">
-                    <i class="${changeIcon}"></i> ${Math.abs(crypto.change24h).toFixed(2)}%
+                    <i class="${changeIcon}"></i> ${Math.abs(asset.change24h).toFixed(2)}%
                 </div>
-                <div style="margin-top: 10px; font-size: 0.9rem; color: #aaa;">
-                    24h Vol: $${(crypto.volume24h / 1000000).toFixed(1)}M
+                <div style="margin-top: 5px; font-size: 0.8rem; color: #aaa;">
+                    Market Cap: $${(asset.marketCap / 1000000000).toFixed(1)}B
                 </div>
             </div>
         `;
@@ -259,21 +443,26 @@ function renderMarket() {
     
     // Render asset selector
     let assetSelector = document.getElementById('assetSelector');
-    assetSelector.innerHTML = '';
-    for (let symbol in cryptocurrencies) {
-        let isActive = symbol === selectedAsset ? 'active' : '';
-        assetSelector.innerHTML += `
-            <button class="asset-btn ${isActive}" onclick="selectAsset('${symbol}')">
-                ${symbol}
-            </button>
-        `;
+    if (assetSelector) {
+        assetSelector.innerHTML = '';
+        let count = 0;
+        for (let symbol in assets) {
+            if (count >= 10) break; // Show only first 10 for space
+            let isActive = symbol === selectedAsset ? 'active' : '';
+            assetSelector.innerHTML += `
+                <button class="asset-btn ${isActive}" onclick="selectAsset('${symbol}')">
+                    ${symbol}
+                </button>
+            `;
+            count++;
+        }
     }
     
     // Update datalist
     let assetsList = document.getElementById('assetsList');
     assetsList.innerHTML = '';
-    for (let symbol in cryptocurrencies) {
-        assetsList.innerHTML += `<option value="${symbol}">${cryptocurrencies[symbol].name}</option>`;
+    for (let symbol in assets) {
+        assetsList.innerHTML += `<option value="${symbol}">${assets[symbol].name} (${symbol})</option>`;
     }
     
     // Set selected asset in input
@@ -290,10 +479,10 @@ function renderPortfolio() {
     
     for (let symbol in portfolio) {
         let holding = portfolio[symbol];
-        let crypto = cryptocurrencies[symbol];
+        let asset = assets[symbol];
         
         if (holding.amount > 0) {
-            let currentValue = holding.amount * crypto.price;
+            let currentValue = holding.amount * asset.price;
             totalPortfolioValue += currentValue;
             totalCostBasis += holding.totalCost;
             
@@ -305,16 +494,17 @@ function renderPortfolio() {
                 <div class="portfolio-item">
                     <div class="portfolio-header">
                         <div style="font-weight: bold; font-size: 1.1rem;">
-                            <i class="${crypto.icon}"></i> ${symbol}
+                            <i class="${asset.icon}"></i> ${symbol}
+                            <small style="color: #888; font-size: 0.7em;">${asset.type === 'crypto' ? 'CRYPTO' : 'STOCK'}</small>
                         </div>
                         <div style="font-size: 1.2rem; font-weight: bold;">
                             $${currentValue.toLocaleString(undefined, {minimumFractionDigits: 2})}
                         </div>
                     </div>
-                    <div style="margin-top: 10px;">
+                    <div style="margin-top: 10px; font-size: 0.9rem;">
                         <div>Amount: ${holding.amount.toLocaleString(undefined, {maximumFractionDigits: 8})}</div>
                         <div>Avg Price: $${holding.avgPrice.toFixed(2)}</div>
-                        <div>Current Price: $${crypto.price.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 8})}</div>
+                        <div>Current Price: $${asset.price.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 8})}</div>
                         <div>P&L: <span class="${plClass}">${profitLoss >= 0 ? '+' : ''}$${profitLoss.toFixed(2)} (${profitLossPercent.toFixed(2)}%)</span></div>
                     </div>
                 </div>
@@ -361,27 +551,69 @@ function renderTransactionHistory() {
     }
 }
 
-// Render news ticker
+// Improved News Ticker - FIXED to not show duplicates
 function renderNewsTicker() {
     let newsContent = document.getElementById('newsContent');
     newsContent.innerHTML = '';
     
-    // Shuffle and pick 5 news items
-    let shuffledNews = [...newsHeadlines].sort(() => 0.5 - Math.random()).slice(0, 5);
+    // Shuffle and pick 8 unique news items (instead of 5)
+    let shuffledNews = [...newsHeadlines].sort(() => 0.5 - Math.random()).slice(0, 8);
     
+    // Create one continuous stream of news instead of duplicating
     for (let headline of shuffledNews) {
         newsContent.innerHTML += `
             <div class="news-item">
-                <i class="fas fa-bullhorn"></i> ${headline}
+                <i class="fas fa-newspaper"></i> ${headline}
             </div>
         `;
     }
     
-    // Duplicate content for seamless scrolling
-    newsContent.innerHTML += newsContent.innerHTML;
+    // Update the animation to match the new content length
+    newsContent.style.animation = 'ticker 60s linear infinite';
 }
 
-// Render price chart - FIXED VERSION
+// Update CSS for better news ticker
+function addNewsTickerCSS() {
+    const style = document.createElement('style');
+    style.textContent = `
+        .news-ticker {
+            background: rgba(20, 20, 30, 0.9);
+            border-radius: 10px;
+            padding: 8px 15px;
+            margin-top: 20px;
+            border-left: 4px solid #9C27B0;
+            overflow: hidden;
+            height: 40px;
+            position: relative;
+        }
+        
+        .news-content {
+            position: absolute;
+            white-space: nowrap;
+            will-change: transform;
+            animation: ticker 60s linear infinite;
+        }
+        
+        @keyframes ticker {
+            0% {
+                transform: translateX(100%);
+            }
+            100% {
+                transform: translateX(-100%);
+            }
+        }
+        
+        .news-item {
+            display: inline-block;
+            margin-right: 40px;
+            color: #aaa;
+            font-size: 0.9rem;
+        }
+    `;
+    document.head.appendChild(style);
+}
+
+// Render price chart
 function renderChart() {
     let canvas = document.getElementById('priceChart');
     if (!canvas) {
@@ -402,9 +634,7 @@ function renderChart() {
     
     let selectedHistory = priceHistory[selectedAsset];
     if (!selectedHistory || selectedHistory.length === 0) {
-        console.log('No price history for', selectedAsset);
-        // Initialize with default data
-        selectedHistory = [{ day: 1, price: cryptocurrencies[selectedAsset].price }];
+        selectedHistory = [{ day: 1, price: assets[selectedAsset].price }];
     }
     
     let labels = selectedHistory.map(item => `Day ${item.day}`);
@@ -412,23 +642,23 @@ function renderChart() {
     
     // Create gradient for chart
     let gradient = ctx.createLinearGradient(0, 0, 0, 300);
-    gradient.addColorStop(0, `${cryptocurrencies[selectedAsset].color}40`);
-    gradient.addColorStop(1, `${cryptocurrencies[selectedAsset].color}00`);
+    gradient.addColorStop(0, `${assets[selectedAsset].color}40`);
+    gradient.addColorStop(1, `${assets[selectedAsset].color}00`);
     
     chart = new Chart(ctx, {
         type: 'line',
         data: {
             labels: labels,
             datasets: [{
-                label: `${selectedAsset} Price`,
+                label: `${selectedAsset} Price (${assets[selectedAsset].type === 'crypto' ? 'Cryptocurrency' : 'Stock'})`,
                 data: prices,
-                borderColor: cryptocurrencies[selectedAsset].color,
+                borderColor: assets[selectedAsset].color,
                 backgroundColor: gradient,
                 borderWidth: 3,
                 fill: true,
                 tension: 0.2,
                 pointRadius: 2,
-                pointBackgroundColor: cryptocurrencies[selectedAsset].color,
+                pointBackgroundColor: assets[selectedAsset].color,
                 pointBorderColor: '#fff',
                 pointBorderWidth: 1
             }]
@@ -457,7 +687,7 @@ function renderChart() {
                     backgroundColor: 'rgba(20, 20, 30, 0.9)',
                     titleColor: '#fff',
                     bodyColor: '#fff',
-                    borderColor: cryptocurrencies[selectedAsset].color,
+                    borderColor: assets[selectedAsset].color,
                     borderWidth: 1,
                     callbacks: {
                         label: function(context) {
@@ -510,11 +740,6 @@ function renderChart() {
                         }
                     }
                 }
-            },
-            elements: {
-                line: {
-                    tension: 0.2
-                }
             }
         }
     });
@@ -527,7 +752,7 @@ function updateStats() {
     for (let symbol in portfolio) {
         let holding = portfolio[symbol];
         if (holding.amount > 0 && previousPrices[symbol]) {
-            let priceChange = cryptocurrencies[symbol].price - previousPrices[symbol];
+            let priceChange = assets[symbol].price - previousPrices[symbol];
             dailyPnl += holding.amount * priceChange;
         }
     }
@@ -542,7 +767,7 @@ function updateStats() {
     let winRate = totalTrades > 0 ? (profitableTrades / totalTrades * 100) : 0;
     document.getElementById('winRate').textContent = `${winRate.toFixed(1)}%`;
     
-    // Update risk level based on portfolio concentration
+    // Update risk level
     let riskLevel = calculateRiskLevel();
     document.getElementById('riskLevel').textContent = riskLevel;
     document.getElementById('riskLevel').className = riskLevel === 'High' ? 'stat-value negative-stat' : 
@@ -554,42 +779,46 @@ function updateStats() {
     // Update best performer
     let bestPerformer = findBestPerformer();
     document.getElementById('bestPerformer').textContent = bestPerformer;
+    
+    // Update asset breakdown
+    updateAssetBreakdown();
 }
 
-// Calculate risk level based on portfolio
+// Calculate risk level
 function calculateRiskLevel() {
     let totalValue = cash;
     for (let symbol in portfolio) {
-        totalValue += portfolio[symbol].amount * cryptocurrencies[symbol].price;
+        totalValue += portfolio[symbol].amount * assets[symbol].price;
     }
     
     if (totalValue === 0) return 'Low';
     
-    // Calculate concentration in most volatile assets
-    let volatileExposure = 0;
-    for (let symbol in cryptocurrencies) {
-        if (cryptocurrencies[symbol].volatility > 0.1) {
-            let holdingValue = portfolio[symbol].amount * cryptocurrencies[symbol].price;
-            volatileExposure += holdingValue;
+    // Calculate crypto exposure percentage (crypto is riskier)
+    let cryptoExposure = 0;
+    for (let symbol in portfolio) {
+        if (assets[symbol].type === 'crypto') {
+            let holdingValue = portfolio[symbol].amount * assets[symbol].price;
+            cryptoExposure += holdingValue;
         }
     }
     
-    let exposurePercent = (volatileExposure / totalValue) * 100;
+    let exposurePercent = (cryptoExposure / totalValue) * 100;
     
+    if (exposurePercent > 70) return 'Very High';
     if (exposurePercent > 50) return 'High';
-    if (exposurePercent > 20) return 'Medium';
+    if (exposurePercent > 30) return 'Medium';
     return 'Low';
 }
 
-// Find best performing asset in portfolio
+// Find best performing asset
 function findBestPerformer() {
-    let bestSymbol = 'N/A';
+    let bestSymbol = 'None';
     let bestReturn = -Infinity;
     
     for (let symbol in portfolio) {
         let holding = portfolio[symbol];
         if (holding.amount > 0 && holding.avgPrice > 0) {
-            let currentPrice = cryptocurrencies[symbol].price;
+            let currentPrice = assets[symbol].price;
             let returnPercent = ((currentPrice - holding.avgPrice) / holding.avgPrice) * 100;
             
             if (returnPercent > bestReturn) {
@@ -602,6 +831,54 @@ function findBestPerformer() {
     return bestSymbol;
 }
 
+// Update asset breakdown (crypto vs stocks)
+function updateAssetBreakdown() {
+    let cryptoValue = 0;
+    let stockValue = 0;
+    
+    for (let symbol in portfolio) {
+        let holdingValue = portfolio[symbol].amount * assets[symbol].price;
+        if (assets[symbol].type === 'crypto') {
+            cryptoValue += holdingValue;
+        } else {
+            stockValue += holdingValue;
+        }
+    }
+    
+    // Create or update breakdown display
+    let breakdownElement = document.getElementById('assetBreakdown');
+    if (!breakdownElement) {
+        // Create it if it doesn't exist
+        breakdownElement = document.createElement('div');
+        breakdownElement.id = 'assetBreakdown';
+        breakdownElement.className = 'stat-card';
+        breakdownElement.innerHTML = `
+            <div class="stat-label">Asset Allocation</div>
+            <div class="stat-value">
+                <span style="color: #F7931A">Crypto: $${cryptoValue.toFixed(0)}</span><br>
+                <span style="color: #4285F4">Stocks: $${stockValue.toFixed(0)}</span><br>
+                <span style="color: #4CAF50">Cash: $${cash.toFixed(0)}</span>
+            </div>
+        `;
+        
+        // Find where to insert it
+        let statsContainer = document.querySelector('.stats');
+        if (statsContainer) {
+            statsContainer.appendChild(breakdownElement);
+        }
+    } else {
+        // Update existing
+        breakdownElement.innerHTML = `
+            <div class="stat-label">Asset Allocation</div>
+            <div class="stat-value">
+                <span style="color: #F7931A">Crypto: $${cryptoValue.toFixed(0)}</span><br>
+                <span style="color: #4285F4">Stocks: $${stockValue.toFixed(0)}</span><br>
+                <span style="color: #4CAF50">Cash: $${cash.toFixed(0)}</span>
+            </div>
+        `;
+    }
+}
+
 // Select an asset for trading
 function selectAsset(symbol) {
     selectedAsset = symbol;
@@ -609,7 +886,7 @@ function selectAsset(symbol) {
     render();
 }
 
-// Buy cryptocurrency
+// Buy asset
 function buy() {
     let asset = document.getElementById('asset').value.toUpperCase().trim();
     let amount = parseFloat(document.getElementById('amount').value);
@@ -617,8 +894,8 @@ function buy() {
     let limitPrice = orderType === 'limit' ? parseFloat(document.getElementById('limitPrice').value) : null;
     
     // Input validation
-    if (!asset || !cryptocurrencies[asset]) {
-        alert(`Invalid cryptocurrency. Available: ${Object.keys(cryptocurrencies).join(', ')}`);
+    if (!asset || !assets[asset]) {
+        alert(`Invalid asset. Available assets: ${Object.keys(assets).slice(0, 5).join(', ')}...`);
         return;
     }
     
@@ -632,7 +909,7 @@ function buy() {
         return;
     }
     
-    let price = orderType === 'limit' ? limitPrice : cryptocurrencies[asset].price;
+    let price = orderType === 'limit' ? limitPrice : assets[asset].price;
     let cost = price * amount;
     
     // Check if we have enough cash
@@ -667,7 +944,7 @@ function buy() {
     render();
 }
 
-// Sell cryptocurrency
+// Sell asset
 function sell() {
     let asset = document.getElementById('asset').value.toUpperCase().trim();
     let amount = parseFloat(document.getElementById('amount').value);
@@ -675,8 +952,8 @@ function sell() {
     let limitPrice = orderType === 'limit' ? parseFloat(document.getElementById('limitPrice').value) : null;
     
     // Input validation
-    if (!asset || !cryptocurrencies[asset]) {
-        alert(`Invalid cryptocurrency. Available: ${Object.keys(cryptocurrencies).join(', ')}`);
+    if (!asset || !assets[asset]) {
+        alert(`Invalid asset. Available assets: ${Object.keys(assets).slice(0, 5).join(', ')}...`);
         return;
     }
     
@@ -690,11 +967,11 @@ function sell() {
         return;
     }
     
-    let price = orderType === 'limit' ? limitPrice : cryptocurrencies[asset].price;
+    let price = orderType === 'limit' ? limitPrice : assets[asset].price;
     
     // For limit orders, check if current price meets our limit
-    if (orderType === 'limit' && price > cryptocurrencies[asset].price) {
-        alert(`Limit price ($${price}) is higher than current price ($${cryptocurrencies[asset].price}). Order not executed.`);
+    if (orderType === 'limit' && price > assets[asset].price) {
+        alert(`Limit price ($${price}) is higher than current price ($${assets[asset].price}). Order not executed.`);
         return;
     }
     
@@ -759,6 +1036,9 @@ function toggleLimitPrice() {
 
 // Initialize the application
 function init() {
+    // Add custom CSS for news ticker
+    addNewsTickerCSS();
+    
     // Generate wallet address
     document.getElementById('walletAddress').textContent = generateWalletAddress();
     
@@ -785,15 +1065,40 @@ function init() {
     // Auto-select asset when typing in asset input
     document.getElementById('asset').addEventListener('input', function(e) {
         let value = e.target.value.toUpperCase();
-        if (cryptocurrencies[value]) {
+        if (assets[value]) {
             selectAsset(value);
         }
     });
     
-    // Initial render - wait a bit to ensure DOM is fully loaded
+    // Add asset type filter if it doesn't exist
+    addAssetTypeFilter();
+    
+    // Initial render - wait for DOM
     setTimeout(() => {
         render();
     }, 100);
+}
+
+// Add asset type filter to UI
+function addAssetTypeFilter() {
+    let tradePanel = document.querySelector('.trade-panel');
+    if (tradePanel && !document.getElementById('assetTypeFilter')) {
+        let filterHTML = `
+            <div class="form-group">
+                <label for="assetTypeFilter"><i class="fas fa-filter"></i> Filter Assets</label>
+                <select id="assetTypeFilter" class="form-control" onchange="renderMarket()">
+                    <option value="all">All Assets</option>
+                    <option value="crypto">Cryptocurrencies Only</option>
+                    <option value="stock">Stocks Only</option>
+                </select>
+            </div>
+        `;
+        
+        let tradeForm = tradePanel.querySelector('.trade-form');
+        if (tradeForm) {
+            tradeForm.insertAdjacentHTML('beforebegin', filterHTML);
+        }
+    }
 }
 
 // Start the simulation when page loads
